@@ -1,0 +1,51 @@
+# Render.com — despliegue gratuito
+# https://render.com → New + → Blueprint → conecta tu repo de GitHub
+#
+# URL gratis: https://cludy-shop.onrender.com (o el nombre que elijas)
+# Dominio propio (.com): comprarlo en Cloudflare/Namecheap y conectarlo en Render (gratis)
+
+services:
+  - type: web
+    name: cludy-shop
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_PATH
+        value: ./data/cludy.db
+      - key: UPLOAD_DIR
+        value: ./uploads
+      - key: BASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ADMIN_USER
+        value: admin
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_PUBLISHABLE_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: LTC_WALLET_ADDRESS
+        sync: false
+      - key: PAYPAL_EMAIL
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: DISCORD_URL
+        value: https://discord.gg/WPrr4kFWyn

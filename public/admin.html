@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — Cludy Shop</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body class="admin-body">
+  <div class="noise-overlay"></div>
+
+  <!-- Login -->
+  <section id="loginScreen" class="admin-login">
+    <div class="admin-login-card">
+      <div class="admin-login-header">
+        <span class="logo-icon">C</span>
+        <h1>Panel Admin</h1>
+        <p>Cludy Shop</p>
+      </div>
+      <form id="loginForm">
+        <label>
+          <span>Usuario</span>
+          <input type="text" id="loginUser" required autocomplete="username">
+        </label>
+        <label>
+          <span>Contraseña</span>
+          <input type="password" id="loginPass" required autocomplete="current-password">
+        </label>
+        <button type="submit" class="btn btn-primary btn-block">Entrar</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- Dashboard -->
+  <div id="adminApp" class="admin-app hidden">
+    <aside class="admin-sidebar">
+      <a href="/" class="logo admin-logo">
+        <span class="logo-icon">C</span>
+        <span class="logo-text">Cludy<span class="logo-accent">Admin</span></span>
+      </a>
+      <nav class="admin-nav">
+        <button type="button" class="admin-nav-btn active" data-tab="dashboard">Dashboard</button>
+        <button type="button" class="admin-nav-btn" data-tab="products">Productos</button>
+        <button type="button" class="admin-nav-btn" data-tab="orders">Pedidos</button>
+        <button type="button" class="admin-nav-btn" data-tab="reviews">Reseñas</button>
+      </nav>
+      <div class="admin-sidebar-footer">
+        <span id="adminUserLabel"></span>
+        <button type="button" id="logoutBtn" class="btn btn-outline btn-sm">Salir</button>
+      </div>
+    </aside>
+
+    <main class="admin-main">
+      <!-- Dashboard -->
+      <section id="tab-dashboard" class="admin-tab active">
+        <h2 class="admin-title">Dashboard</h2>
+        <div class="admin-stats" id="statsGrid"></div>
+      </section>
+
+      <!-- Products -->
+      <section id="tab-products" class="admin-tab">
+        <div class="admin-tab-header">
+          <h2 class="admin-title">Productos</h2>
+          <button type="button" class="btn btn-primary" id="newProductBtn">+ Nuevo producto</button>
+        </div>
+        <div class="admin-table-wrap">
+          <table class="admin-table" id="productsTable">
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th>Categoría</th>
+                <th>Precio</th>
+                <th>Stock</th>
+                <th>Ventas</th>
+                <th>Visibilidad</th>
+                <th>Estado</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="productsBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Orders -->
+      <section id="tab-orders" class="admin-tab">
+        <h2 class="admin-title">Pedidos</h2>
+        <div class="admin-table-wrap">
+          <table class="admin-table" id="ordersTable">
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Cliente</th>
+                <th>Total</th>
+                <th>Método</th>
+                <th>Estado</th>
+                <th>Fecha</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="ordersBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Reviews -->
+      <section id="tab-reviews" class="admin-tab">
+        <h2 class="admin-title">Reseñas</h2>
+        <div class="admin-table-wrap">
+          <table class="admin-table" id="reviewsTable">
+            <thead>
+              <tr>
+                <th>Cliente</th>
+                <th>Producto</th>
+                <th>Estrellas</th>
+                <th>Mensaje</th>
+                <th>Estado</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="reviewsBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Product modal -->
+  <div class="modal" id="productModal">
+    <div class="modal-content admin-modal-content">
+      <button type="button" class="modal-close" id="closeProductModal">&times;</button>
+      <h3 id="productModalTitle">Nuevo producto</h3>
+      <form id="productForm" enctype="multipart/form-data">
+        <input type="hidden" id="productId">
+
+        <div class="admin-form-grid">
+          <label class="admin-field full">
+            <span>Nombre *</span>
+            <input type="text" id="productName" required>
+          </label>
+          <label class="admin-field full">
+            <span>Descripción</span>
+            <textarea id="productDesc" rows="3"></textarea>
+          </label>
+          <label class="admin-field">
+            <span>Precio (€) *</span>
+            <input type="number" id="productPrice" step="0.01" min="0" required>
+          </label>
+          <label class="admin-field">
+            <span>Categoría</span>
+            <select id="productCategory">
+              <option value="packs">Packs</option>
+              <option value="scripts">Scripts</option>
+              <option value="guides">Guías</option>
+              <option value="configs">Configs</option>
+              <option value="templates">Plantillas</option>
+              <option value="techniques">Técnicas</option>
+              <option value="digital">Digital</option>
+            </select>
+          </label>
+          <label class="admin-field">
+            <span>Stock (-1 = ilimitado)</span>
+            <input type="number" id="productStock" value="-1">
+          </label>
+          <label class="admin-field">
+            <span>Compras totales</span>
+            <input type="number" id="productPurchases" readonly disabled title="Se actualiza automáticamente al vender">
+          </label>
+        </div>
+
+        <fieldset class="admin-fieldset">
+          <legend>Visibilidad en tienda</legend>
+          <label class="admin-check">
+            <input type="checkbox" id="productShowStock">
+            <span>Mostrar stock en la ficha del producto</span>
+          </label>
+          <label class="admin-check">
+            <input type="checkbox" id="productShowPurchases" checked>
+            <span>Mostrar cantidad de compras ("X vendidos")</span>
+          </label>
+        </fieldset>
+
+        <fieldset class="admin-fieldset">
+          <legend>Oferta</legend>
+          <label class="admin-check">
+            <input type="checkbox" id="productOfferActive">
+            <span>Oferta activa</span>
+          </label>
+          <div class="admin-form-grid">
+            <label class="admin-field">
+              <span>Precio oferta (€)</span>
+              <input type="number" id="productOfferPrice" step="0.01" min="0">
+            </label>
+            <label class="admin-field">
+              <span>Etiqueta oferta</span>
+              <input type="text" id="productOfferLabel" placeholder="-30% OFERTA">
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="admin-fieldset">
+          <legend>Archivos</legend>
+          <label class="admin-field">
+            <span>Imagen del producto</span>
+            <input type="file" id="productImage" accept="image/*">
+            <small id="currentImageHint" class="admin-hint hidden"></small>
+          </label>
+          <label class="admin-field">
+            <span>Archivo digital (entrega al cliente)</span>
+            <input type="file" id="productDigitalFile">
+            <small id="currentFileHint" class="admin-hint hidden"></small>
+          </label>
+        </fieldset>
+
+        <label class="admin-check" id="productActiveWrap">
+          <input type="checkbox" id="productActive" checked>
+          <span>Producto activo (visible en tienda)</span>
+        </label>
+
+        <div class="admin-form-actions">
+          <button type="button" class="btn btn-outline" id="cancelProductBtn">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="saveProductBtn">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script src="/js/admin.js"></script>
+</body>
+</html>
