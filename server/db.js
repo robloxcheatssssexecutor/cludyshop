@@ -1,16 +1,74 @@
-const Database = require("better-sqlite3");
+const initSqlJs = require("sql.js");
 const path = require("path");
 const fs = require("fs");
 
 const dbPath = process.env.DATABASE_PATH || "./data/cludy.db";
 const dir = path.dirname(dbPath);
-if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
-const db = new Database(dbPath);
-db.pragma("journal_mode = WAL");
-db.pragma("foreign_keys = ON");
+let sqlDb = null;
+let persistEnabled = false;
 
-function initDb() {
+function saveDb() {
+  if (!persistEnabled || !sqlDb) return;
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(dbPath, Buffer.from(sqlDb.export()));
+}
+
+function bindParams(stmt, params) {
+  if (params.length) stmt.bind(params);
+}
+
+const db = {
+  prepare(sql) {
+    return {
+      get(...params) {
+        const stmt = sqlDb.prepare(sql);
+        try {
+          bindParams(stmt, params);
+          if (stmt.step()) return stmt.getAsObject();
+          return undefined;
+        } finally {
+          stmt.free();
+        }
+      },
+      all(...params) {
+        const stmt = sqlDb.prepare(sql);
+        try {
+          bindParams(stmt, params);
+          const rows = [];
+          while (stmt.step()) rows.push(stmt.getAsObject());
+          return rows;
+        } finally {
+          stmt.free();
+        }
+      },
+      run(...params) {
+        sqlDb.run(sql, params);
+        const lastInsertRowid = sqlDb.exec("SELECT last_insert_rowid() as id")[0]?.values[0][0];
+        const changes = sqlDb.getRowsModified();
+        saveDb();
+        return { lastInsertRowid, changes };
+      },
+    };
+  },
+  exec(sql) {
+    sqlDb.exec(sql);
+    saveDb();
+  },
+};
+
+async function initDb() {
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+
+  const SQL = await initSqlJs();
+  if (fs.existsSync(dbPath)) {
+    sqlDb = new SQL.Database(fs.readFileSync(dbPath));
+  } else {
+    sqlDb = new SQL.Database();
+  }
+
+  sqlDb.run("PRAGMA foreign_keys = ON");
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS products (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -110,6 +168,9 @@ function initDb() {
     insertReview.run("Laura S.", 5, "Pago con Stripe y en segundos tenía mi descarga. Excelente tienda.", "Script Pro v2", "2026-07-10T14:30:00.000Z");
     insertReview.run("Diego R.", 4, "Buena calidad en los archivos. Litecoin funcionó sin problemas.", "Guía Completa PDF", "2026-07-05T09:15:00.000Z");
   }
+
+  persistEnabled = true;
+  saveDb();
 }
 
 function generateOrderCode() {

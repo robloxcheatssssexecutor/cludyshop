@@ -11,8 +11,6 @@ const reviewsRouter = require("./routes/reviews");
 const adminRouter = require("./routes/admin");
 const configRouter = require("./routes/config");
 
-initDb();
-
 const app = express();
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || "0.0.0.0";
@@ -59,8 +57,15 @@ app.use((req, res) => {
   res.sendFile(path.join(__dirname, "../public/index.html"));
 });
 
-app.listen(PORT, HOST, () => {
-  const base = process.env.BASE_URL || `http://localhost:${PORT}`;
-  console.log(`Cludy Shop running on ${base}`);
-  console.log(`Admin panel: ${base}/admin.html`);
-});
+initDb()
+  .then(() => {
+    app.listen(PORT, HOST, () => {
+      const base = process.env.BASE_URL || `http://localhost:${PORT}`;
+      console.log(`Cludy Shop running on ${base}`);
+      console.log(`Admin panel: ${base}/admin.html`);
+    });
+  })
+  .catch((err) => {
+    console.error("Failed to start:", err);
+    process.exit(1);
+  });
