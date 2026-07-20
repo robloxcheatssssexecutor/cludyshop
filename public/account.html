@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mi cuenta — Cludy Shop</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <div class="noise-overlay"></div>
+
+  <header class="header scrolled">
+    <div class="container header-inner">
+      <a href="/" class="logo">
+        <span class="logo-icon">C</span>
+        <span class="logo-text">Cludy<span class="logo-accent">Shop</span></span>
+      </a>
+
+      <nav class="nav">
+        <a href="/" class="nav-link">Tienda</a>
+        <a href="/track.html" class="nav-link">Seguimiento</a>
+        <a href="/account.html" class="nav-link active">Cuenta</a>
+      </nav>
+
+      <div class="header-actions">
+        <a href="/account.html#login" class="header-auth-btn header-auth-btn-primary header-login-btn" id="headerLoginBtn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+          Login
+        </a>
+        <a href="/account.html" class="header-auth-btn header-auth-btn-accent header-account-btn hidden">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          Mi cuenta
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="account-page">
+    <div class="container account-container">
+
+      <section id="accountLogin" class="account-card">
+        <div class="account-card-header">
+          <span class="section-tag">Acceso</span>
+          <h1 class="section-title">Iniciar sesión</h1>
+          <p class="section-desc">Entra con tu cuenta para acceder a tu área personal.</p>
+        </div>
+        <form id="loginForm" class="account-form">
+          <div class="form-group">
+            <label for="loginUser">Usuario</label>
+            <input type="text" id="loginUser" required autocomplete="username" placeholder="Tu usuario">
+          </div>
+          <div class="form-group">
+            <label for="loginPass">Contraseña</label>
+            <input type="password" id="loginPass" required autocomplete="current-password" placeholder="Tu contraseña">
+          </div>
+          <button type="submit" class="btn btn-primary btn-full">Entrar</button>
+        </form>
+      </section>
+
+      <section id="accountDashboard" class="account-card hidden">
+        <div class="account-card-header">
+          <span class="section-tag">Tu cuenta</span>
+          <h1 class="section-title">Hola, <span id="accountUser"></span></h1>
+          <p class="section-desc">Gestiona tu acceso y consulta tus pedidos.</p>
+        </div>
+
+        <div class="account-actions">
+          <a href="/track.html" class="account-action-card">
+            <span class="account-action-icon">🔍</span>
+            <div>
+              <h3>Seguimiento de pedidos</h3>
+              <p>Consulta el estado de tus compras con tu código CLUDY-XXXXXX.</p>
+            </div>
+          </a>
+
+          <a href="/" class="account-action-card">
+            <span class="account-action-icon">🛒</span>
+            <div>
+              <h3>Ir a la tienda</h3>
+              <p>Explora el catálogo y compra productos digitales.</p>
+            </div>
+          </a>
+
+          <a href="/admin.html" id="adminSection" class="account-action-card account-action-admin hidden">
+            <span class="account-action-icon">⚙️</span>
+            <div>
+              <h3>Panel Admin</h3>
+              <p>Gestiona productos, pedidos y reseñas de la tienda.</p>
+            </div>
+          </a>
+        </div>
+
+        <button type="button" class="btn btn-outline btn-full" id="logoutBtn">Cerrar sesión</button>
+      </section>
+
+    </div>
+  </main>
+
+  <div class="toast" id="toast"></div>
+  <script src="/js/auth-header.js"></script>
+  <script src="/js/account.js"></script>
+</body>
+</html>

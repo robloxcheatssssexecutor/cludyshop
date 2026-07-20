@@ -28,14 +28,14 @@ router.post("/login", (req, res) => {
     return res.status(401).json({ error: "Credenciales incorrectas" });
   }
 
-  const token = jwt.sign({ user: username }, process.env.JWT_SECRET, { expiresIn: "7d" });
+  const token = jwt.sign({ user: username, isAdmin: true }, process.env.JWT_SECRET, { expiresIn: "7d" });
   res.cookie("admin_token", token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
-  res.json({ ok: true, user: username });
+  res.json({ ok: true, user: username, isAdmin: true });
 });
 
 router.post("/logout", (req, res) => {
@@ -44,7 +44,8 @@ router.post("/logout", (req, res) => {
 });
 
 router.get("/me", authMiddleware, (req, res) => {
-  res.json({ user: req.admin.user });
+  const isAdmin = req.admin.isAdmin === true || req.admin.user === process.env.ADMIN_USER;
+  res.json({ user: req.admin.user, isAdmin });
 });
 
 router.get("/stats", authMiddleware, (req, res) => {

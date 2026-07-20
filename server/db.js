@@ -148,15 +148,13 @@ async function initDb() {
       ["Bundle Ultimate", "Todos los productos digitales en un solo pack con descuento incluido.", 49.99, "packs", 25, 1, 56, 1, 0],
       ["Config Elite .txt", "Archivo de configuración optimizada premium. Descarga directa.", 7.99, "configs", -1, 0, 312, 1, 0],
       ["Plantillas Pack", "Pack de plantillas editables en múltiples formatos digitales.", 12.99, "templates", 75, 1, 98, 1, 0],
-      ["Técnica Avanzada #1", "Método probado paso a paso en archivo .txt. Resultados verificados.", 24.99, "techniques", -1, 1, 45, 1, 0],
-      ["Técnica Pro Master", "Técnica exclusiva con guía detallada y ejemplos prácticos incluidos.", 34.99, "techniques", 30, 1, 67, 1, 1],
-      ["Combo Técnicas VIP", "Pack con las 3 mejores técnicas + bonus exclusivo en .txt.", 59.99, "techniques", 15, 1, 23, 1, 0],
       ["Starter Digital Kit", "Kit inicial perfecto para empezar. Archivos listos para descargar.", 4.99, "packs", -1, 0, 501, 1, 0],
     ];
     for (const s of samples) insert.run(...s);
     db.prepare("UPDATE products SET offer_price = 6.99, offer_label = '-30% OFERTA' WHERE name = 'Guía Completa Digital'").run();
-    db.prepare("UPDATE products SET offer_price = 24.99, offer_label = '-28% OFERTA' WHERE name = 'Técnica Pro Master'").run();
   }
+
+  db.prepare("UPDATE products SET active = 0 WHERE category = 'techniques'").run();
 
   const reviewCount = db.prepare("SELECT COUNT(*) as c FROM reviews").get().c;
   if (reviewCount === 0) {
