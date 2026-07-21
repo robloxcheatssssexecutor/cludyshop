@@ -81,3 +81,16 @@ function shutdown() {
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 process.on("beforeExit", saveDb);
+
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled promise rejection:", reason);
+});
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught exception:", err);
+  try {
+    saveDb();
+  } catch {
+    /* ignore */
+  }
+  process.exit(1);
+});

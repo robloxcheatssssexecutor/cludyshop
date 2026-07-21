@@ -2,6 +2,7 @@ const express = require("express");
 const path = require("path");
 const fs = require("fs");
 const os = require("os");
+const archiver = require("archiver");
 const extract = require("extract-zip");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -132,36 +133,36 @@ router.get("/products", authMiddleware, (req, res) => {
   res.json(products);
 });
 
-router.get("/products/export", authMiddleware, async (req, res) => {
-  let archiver;
+router.get("/products/export", authMiddleware, (req, res) => {
   try {
-    ({ default: archiver } = await import("archiver"));
+    const payload = exportProducts(db);
+    const stamp = new Date().toISOString().slice(0, 10);
+    const folderName = `products-export-${stamp}`;
+    const filename = `${folderName}.zip`;
+
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.type("application/zip");
+
+    const archive = archiver("zip", { zlib: { level: 9 } });
+    archive.on("error", (err) => {
+      if (!res.headersSent) res.status(500).json({ error: err.message || "Error al exportar productos" });
+      else res.end();
+    });
+    archive.pipe(res);
+
+    archive.append(JSON.stringify(payload, null, 2), { name: `${folderName}/products.json` });
+
+    for (const file of collectProductUploadFiles(payload.products, uploadDir)) {
+      archive.file(file.full, { name: `${folderName}/uploads/${file.rel}` });
+    }
+
+    archive.finalize();
   } catch (err) {
-    return res.status(500).json({ error: err.message || "Error al cargar el exportador ZIP" });
+    console.error("Product export failed:", err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: err.message || "Error al exportar productos" });
+    }
   }
-
-  const payload = exportProducts(db);
-  const stamp = new Date().toISOString().slice(0, 10);
-  const folderName = `products-export-${stamp}`;
-  const filename = `${folderName}.zip`;
-
-  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-  res.type("application/zip");
-
-  const archive = archiver("zip", { zlib: { level: 9 } });
-  archive.on("error", (err) => {
-    if (!res.headersSent) res.status(500).json({ error: err.message || "Error al exportar productos" });
-    else res.end();
-  });
-  archive.pipe(res);
-
-  archive.append(JSON.stringify(payload, null, 2), { name: `${folderName}/products.json` });
-
-  for (const file of collectProductUploadFiles(payload.products, uploadDir)) {
-    archive.file(file.full, { name: `${folderName}/uploads/${file.rel}` });
-  }
-
-  archive.finalize();
 });
 
 router.post("/products/import", authMiddleware, optionalProductsUpload, async (req, res) => {
