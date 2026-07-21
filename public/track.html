@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Seguimiento de pedido — Cludy Shop</title>
+  <title>Order Tracking — Cludy Shop</title>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/styles.css">
 </head>
@@ -13,9 +13,9 @@
     <div class="container header-inner">
       <a href="/" class="logo"><span class="logo-icon">C</span><span class="logo-text">Cludy<span class="logo-accent">Shop</span></span></a>
       <nav class="nav">
-        <a href="/" class="nav-link">Tienda</a>
-        <a href="/track.html" class="nav-link active track-link-nav">Seguimiento</a>
-        <a href="/account.html" class="nav-link">Cuenta</a>
+        <a href="/" class="nav-link">Store</a>
+        <a href="/track.html" class="nav-link active track-link-nav">Track Order</a>
+        <a href="/account.html" class="nav-link">Account</a>
       </nav>
       <div class="header-actions">
         <a href="/account.html#login" class="header-auth-btn header-auth-btn-primary header-login-btn">
@@ -24,7 +24,7 @@
         </a>
         <a href="/account.html" class="header-auth-btn header-auth-btn-accent header-account-btn hidden">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          Mi cuenta
+          My Account
         </a>
       </div>
     </div>
@@ -33,14 +33,14 @@
   <main class="section" style="padding-top:120px;min-height:80vh;">
     <div class="container" style="max-width:640px;">
       <div class="section-header">
-        <span class="section-tag">Tu pedido digital</span>
-        <h1 class="section-title">Seguimiento</h1>
-        <p class="section-desc">Introduce tu código CLUDY-XXXXXX para ver el estado y descargar tus archivos.</p>
+        <span class="section-tag">Your digital order</span>
+        <h1 class="section-title">Order tracking</h1>
+        <p class="section-desc">Enter your CLUDY-XXXXXX code to view status and download your files.</p>
       </div>
 
       <form id="trackForm" class="track-form" style="display:flex;gap:12px;margin-bottom:32px;">
         <input type="text" id="trackCode" placeholder="CLUDY-XXXXXX" required style="flex:1;padding:14px 18px;background:var(--black-card);border:1px solid rgba(0,82,255,0.2);border-radius:var(--radius);color:var(--white);font-family:var(--font);font-size:1rem;">
-        <button type="submit" class="btn btn-primary">Buscar</button>
+        <button type="submit" class="btn btn-primary">Search</button>
       </form>
 
       <div id="trackResult" class="hidden">
@@ -51,7 +51,7 @@
           </div>
           <div id="resultTimeline" style="margin:24px 0;"></div>
           <div id="resultItems" style="margin:20px 0;color:var(--gray-300);"></div>
-          <p style="color:var(--gray-500);font-size:0.9rem;">Total: <strong id="resultTotal" style="color:var(--white);"></strong> · Método: <span id="resultMethod"></span></p>
+          <p style="color:var(--gray-500);font-size:0.9rem;">Total: <strong id="resultTotal" style="color:var(--white);"></strong> · Method: <span id="resultMethod"></span></p>
           <div id="resultActions" style="margin-top:24px;display:flex;gap:12px;flex-wrap:wrap;"></div>
           <div id="resultLtc" class="hidden" style="margin-top:20px;padding:16px;background:var(--black-elevated);border-radius:var(--radius);"></div>
         </div>

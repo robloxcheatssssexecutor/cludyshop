@@ -37,9 +37,9 @@
     const data = await res.json().catch(() => ({}));
     if (res.status === 401 && !url.includes("/login")) {
       showLogin();
-      throw new Error("Sesión expirada");
+      throw new Error("Session expired");
     }
-    if (!res.ok) throw new Error(data.error || "Error de servidor");
+    if (!res.ok) throw new Error(data.error || "Server error");
     return data;
   }
 
@@ -66,22 +66,22 @@
   async function loadStats() {
     const stats = await api("/api/admin/stats");
     $("#statsGrid").innerHTML = `
-      <div class="admin-stat-card"><span class="admin-stat-value">${stats.products}</span><span class="admin-stat-label">Productos activos</span></div>
-      <div class="admin-stat-card"><span class="admin-stat-value">${stats.orders}</span><span class="admin-stat-label">Pedidos totales</span></div>
-      <div class="admin-stat-card"><span class="admin-stat-value">${formatPrice(stats.revenue)}</span><span class="admin-stat-label">Ingresos</span></div>
-      <div class="admin-stat-card warn"><span class="admin-stat-value">${stats.pending}</span><span class="admin-stat-label">Pagos pendientes</span></div>`;
+      <div class="admin-stat-card"><span class="admin-stat-value">${stats.products}</span><span class="admin-stat-label">Active products</span></div>
+      <div class="admin-stat-card"><span class="admin-stat-value">${stats.orders}</span><span class="admin-stat-label">Total orders</span></div>
+      <div class="admin-stat-card"><span class="admin-stat-value">${formatPrice(stats.revenue)}</span><span class="admin-stat-label">Revenue</span></div>
+      <div class="admin-stat-card warn"><span class="admin-stat-value">${stats.pending}</span><span class="admin-stat-label">Pending payments</span></div>`;
   }
 
   function stockLabel(stock) {
-    if (stock === -1) return "Ilimitado";
+    if (stock === -1) return "Unlimited";
     return String(stock);
   }
 
   function visibilityBadges(p) {
     const badges = [];
     if (p.show_stock) badges.push('<span class="admin-badge blue">Stock visible</span>');
-    if (p.show_purchases) badges.push('<span class="admin-badge green">Ventas visibles</span>');
-    if (p.offer_active) badges.push('<span class="admin-badge gold">Oferta</span>');
+    if (p.show_purchases) badges.push('<span class="admin-badge green">Sales visible</span>');
+    if (p.offer_active) badges.push('<span class="admin-badge gold">Offer</span>');
     return badges.join(" ") || '<span class="admin-muted">—</span>';
   }
 
@@ -89,7 +89,7 @@
     products = await api("/api/admin/products");
     const tbody = $("#productsBody");
     if (!products.length) {
-      tbody.innerHTML = '<tr><td colspan="8" class="admin-empty">No hay productos</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="8" class="admin-empty">No products</td></tr>';
       return;
     }
 
@@ -99,7 +99,7 @@
       <tr class="${p.active ? "" : "inactive"}">
         <td>
           <strong>${escapeHtml(p.name)}</strong>
-          ${p.image_url ? `<br><small class="admin-muted">Con imagen</small>` : ""}
+          ${p.image_url ? `<br><small class="admin-muted">With image</small>` : ""}
         </td>
         <td>${escapeHtml(p.category)}</td>
         <td>
@@ -110,11 +110,11 @@
         <td>${stockLabel(p.stock)}</td>
         <td>${p.purchase_count}</td>
         <td>${visibilityBadges(p)}</td>
-        <td>${p.active ? '<span class="admin-badge green">Activo</span>' : '<span class="admin-badge red">Oculto</span>'}</td>
+        <td>${p.active ? '<span class="admin-badge green">Active</span>' : '<span class="admin-badge red">Hidden</span>'}</td>
         <td class="admin-actions">
-          <button type="button" class="btn btn-sm btn-outline" data-edit="${p.id}">Editar</button>
-          <button type="button" class="btn btn-sm btn-outline" data-hide="${p.id}">Ocultar</button>
-          <button type="button" class="btn btn-sm btn-danger" data-delete="${p.id}">Eliminar</button>
+          <button type="button" class="btn btn-sm btn-outline" data-edit="${p.id}">Edit</button>
+          <button type="button" class="btn btn-sm btn-outline" data-hide="${p.id}">Hide</button>
+          <button type="button" class="btn btn-sm btn-danger" data-delete="${p.id}">Delete</button>
         </td>
       </tr>`
       )
@@ -133,6 +133,44 @@
 
   function productIdMatch(a, b) {
     return Number(a) === Number(b);
+  }
+
+  function updateDeliveryTypeUI(type = "file") {
+    const isText = type === "text";
+    $("#deliveryTypeFile").checked = !isText;
+    $("#deliveryTypeText").checked = isText;
+    $("#deliveryFileWrap").classList.toggle("hidden", isText);
+    $("#deliveryTextWrap").classList.toggle("hidden", !isText);
+  }
+
+  function getDeliveryType() {
+    return $("#deliveryTypeText").checked ? "text" : "file";
+  }
+
+  function appendDeliveryFields(fd) {
+    const deliveryType = getDeliveryType();
+    fd.append("deliveryType", deliveryType);
+    if (deliveryType === "text") {
+      fd.append("deliveryText", $("#productDeliveryText").value.trim());
+    }
+  }
+
+  function validateDeliveryForm() {
+    const deliveryType = getDeliveryType();
+    if (deliveryType === "text") {
+      if (!$("#productDeliveryText").value.trim()) {
+        showToast("Enter the delivery text", "warning");
+        return false;
+      }
+      return true;
+    }
+    const hasFile = $("#productDigitalFile").files[0];
+    const hasExisting = $("#currentFileHint").classList.contains("hidden") === false;
+    if (!hasFile && !hasExisting) {
+      showToast("Upload the delivery file", "warning");
+      return false;
+    }
+    return true;
   }
 
   function readProductForm() {
@@ -166,17 +204,23 @@
     if (editingId) fd.append("active", data.active ? "1" : "0");
 
     const image = $("#productImage").files[0];
-    const digital = $("#productDigitalFile").files[0];
     if (image) fd.append("image", image);
-    if (digital) fd.append("digitalFile", digital);
+    if (getDeliveryType() === "file") {
+      const digital = $("#productDigitalFile").files[0];
+      if (digital) fd.append("digitalFile", digital);
+    }
+    appendDeliveryFields(fd);
     return fd;
   }
 
   function updateImagePreview(src) {
     const preview = $("#productImagePreview");
     const img = $("#productImagePreviewImg");
+    const placeholder = $("#productImagePlaceholder");
     if (src) {
       img.src = src;
+      img.classList.remove("hidden");
+      placeholder.classList.add("hidden");
       preview.classList.remove("hidden");
       return;
     }
@@ -185,8 +229,10 @@
       URL.revokeObjectURL(imagePreviewUrl);
       imagePreviewUrl = null;
     }
+    img.classList.add("hidden");
     img.removeAttribute("src");
-    preview.classList.add("hidden");
+    placeholder.classList.remove("hidden");
+    preview.classList.remove("hidden");
   }
 
   function openProductModal(id = null) {
@@ -194,16 +240,18 @@
     const form = $("#productForm");
     form.reset();
     updateImagePreview(null);
-    $("#productModalTitle").textContent = id ? "Editar producto" : "Nuevo producto";
+    $("#productModalTitle").textContent = id ? "Edit product" : "New product";
     $("#productActiveWrap").classList.toggle("hidden", !id);
     $("#currentImageHint").classList.add("hidden");
     $("#currentFileHint").classList.add("hidden");
+    $("#currentTextHint").classList.add("hidden");
     $("#productShowPurchases").checked = true;
+    updateDeliveryTypeUI("file");
 
     if (id) {
       const p = products.find((x) => productIdMatch(x.id, id));
       if (!p) {
-        showToast("No se pudo cargar el producto", "warning");
+        showToast("Could not load product", "warning");
         return;
       }
       $("#productId").value = p.id;
@@ -221,12 +269,21 @@
       $("#productActive").checked = !!p.active;
       if (p.image_url) {
         updateImagePreview(p.image_url);
-        $("#currentImageHint").textContent = `Actual: ${p.image_url}`;
+        $("#currentImageHint").textContent = `Current: ${p.image_url}`;
         $("#currentImageHint").classList.remove("hidden");
       }
       if (p.digital_file) {
-        $("#currentFileHint").textContent = `Actual: ${p.digital_file}`;
+        $("#currentFileHint").textContent = `Current file: ${p.digital_file}`;
         $("#currentFileHint").classList.remove("hidden");
+      }
+      const deliveryType = p.delivery_type || "file";
+      updateDeliveryTypeUI(deliveryType);
+      if (deliveryType === "text") {
+        $("#productDeliveryText").value = p.delivery_text || "";
+        if (p.delivery_text) {
+          $("#currentTextHint").textContent = "Delivery text configured";
+          $("#currentTextHint").classList.remove("hidden");
+        }
       }
     } else {
       $("#productId").value = "";
@@ -247,9 +304,11 @@
 
   async function saveProduct(e) {
     e.preventDefault();
+    if (!validateDeliveryForm()) return;
+
     const btn = $("#saveProductBtn");
     btn.disabled = true;
-    btn.textContent = "Guardando...";
+    btn.textContent = "Saving...";
 
     const fd = new FormData();
     fd.append("name", $("#productName").value.trim());
@@ -264,18 +323,21 @@
     fd.append("offerLabel", $("#productOfferLabel").value.trim());
 
     const image = $("#productImage").files[0];
-    const digital = $("#productDigitalFile").files[0];
     if (image) fd.append("image", image);
-    if (digital) fd.append("digitalFile", digital);
+    if (getDeliveryType() === "file") {
+      const digital = $("#productDigitalFile").files[0];
+      if (digital) fd.append("digitalFile", digital);
+    }
+    appendDeliveryFields(fd);
 
     try {
       if (editingId) {
         fd.append("active", $("#productActive").checked ? "1" : "0");
         await api(`/api/admin/products/${editingId}`, { method: "PUT", body: fd });
-        showToast("Producto actualizado");
+        showToast("Product updated");
       } else {
         await api("/api/admin/products", { method: "POST", body: fd });
-        showToast("Producto creado");
+        showToast("Product created");
       }
       closeProductModal();
       await loadProducts();
@@ -283,16 +345,16 @@
       showToast(err.message, "warning");
     } finally {
       btn.disabled = false;
-      btn.textContent = "Guardar";
+      btn.textContent = "Save";
     }
   }
 
   async function hideProduct(id) {
     const p = products.find((x) => productIdMatch(x.id, id));
-    if (!confirm(`¿Ocultar "${p?.name}" de la tienda?`)) return;
+    if (!confirm(`Hide "${p?.name}" from the store?`)) return;
     try {
       await api(`/api/admin/products/${id}`, { method: "DELETE" });
-      showToast("Producto oculto");
+      showToast("Product hidden");
       await loadProducts();
     } catch (err) {
       showToast(err.message, "warning");
@@ -301,10 +363,10 @@
 
   async function deleteProduct(id) {
     const p = products.find((x) => productIdMatch(x.id, id));
-    if (!confirm(`¿Eliminar permanentemente "${p?.name}"? Esta acción no se puede deshacer.`)) return;
+    if (!confirm(`Permanently delete "${p?.name}"? This action cannot be undone.`)) return;
     try {
       await api(`/api/admin/products/${id}/permanent`, { method: "DELETE" });
-      showToast("Producto eliminado");
+      showToast("Product deleted");
       await loadProducts();
     } catch (err) {
       showToast(err.message, "warning");
@@ -312,16 +374,16 @@
   }
 
   const STATUS_MAP = {
-    pending: { label: "Pendiente", cls: "gold" },
-    pending_verification: { label: "Verificando", cls: "blue" },
-    paid: { label: "Pagado", cls: "green" },
+    pending: { label: "Pending", cls: "gold" },
+    pending_verification: { label: "Verifying", cls: "blue" },
+    paid: { label: "Paid", cls: "green" },
   };
 
   async function loadOrders() {
     const orders = await api("/api/admin/orders");
     const tbody = $("#ordersBody");
     if (!orders.length) {
-      tbody.innerHTML = '<tr><td colspan="7" class="admin-empty">No hay pedidos</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" class="admin-empty">No orders</td></tr>';
       return;
     }
 
@@ -335,10 +397,10 @@
         <td>${formatPrice(o.total)}</td>
         <td>${escapeHtml(o.payment_method)}</td>
         <td><span class="admin-badge ${st.cls}">${st.label}</span></td>
-        <td><small>${new Date(o.created_at).toLocaleString("es-ES")}</small></td>
+        <td><small>${new Date(o.created_at).toLocaleString("en-US")}</small></td>
         <td class="admin-actions">
-          ${o.payment_status === "pending_verification" ? `<button type="button" class="btn btn-sm btn-primary" data-approve="${o.id}">Aprobar</button>` : ""}
-          <button type="button" class="btn btn-sm btn-danger" data-del-order="${o.id}">Eliminar</button>
+          ${o.payment_status === "pending_verification" ? `<button type="button" class="btn btn-sm btn-primary" data-approve="${o.id}">Approve</button>` : ""}
+          <button type="button" class="btn btn-sm btn-danger" data-del-order="${o.id}">Delete</button>
         </td>
       </tr>`;
       })
@@ -348,7 +410,7 @@
       btn.addEventListener("click", async () => {
         try {
           await api(`/api/admin/orders/${btn.dataset.approve}/approve`, { method: "POST" });
-          showToast("Pedido aprobado y entregado");
+          showToast("Order approved and delivered");
           loadOrders();
           loadStats();
         } catch (err) {
@@ -359,10 +421,10 @@
 
     tbody.querySelectorAll("[data-del-order]").forEach((btn) => {
       btn.addEventListener("click", async () => {
-        if (!confirm("¿Eliminar este pedido?")) return;
+        if (!confirm("Delete this order?")) return;
         try {
           await api(`/api/admin/orders/${btn.dataset.delOrder}`, { method: "DELETE" });
-          showToast("Pedido eliminado");
+          showToast("Order deleted");
           loadOrders();
         } catch (err) {
           showToast(err.message, "warning");
@@ -374,7 +436,7 @@
   async function importDiscordVouches(file) {
     const btn = $("#importDiscordBtn");
     btn.disabled = true;
-    btn.textContent = "Importando...";
+    btn.textContent = "Importing...";
 
     try {
       let data;
@@ -386,13 +448,15 @@
         data = await api("/api/admin/reviews/import-discord", { method: "POST", body: JSON.stringify({}) });
       }
 
-      showToast(`${data.imported} reseñas importadas (${data.skipped} ya existían)`);
+      showToast(
+        `${data.imported} nuevas de ${data.total} en el archivo (${data.skipped} ya existían). Total en tienda: ${data.visible ?? data.inDatabase} visibles`
+      );
       loadReviews();
     } catch (err) {
       showToast(err.message, "warning");
     } finally {
       btn.disabled = false;
-      btn.textContent = "Importar desde Discord";
+      btn.textContent = "Import from Discord";
       if (file) $("#importDiscordFile").value = "";
     }
   }
@@ -400,8 +464,13 @@
   async function loadReviews() {
     const reviews = await api("/api/admin/reviews");
     const tbody = $("#reviewsBody");
+    const countLabel = $("#reviewsCountLabel");
+    const visibleCount = reviews.filter((r) => r.approved).length;
+    if (countLabel) {
+      countLabel.textContent = `${reviews.length} reseñas en total · ${visibleCount} visibles en la web`;
+    }
     if (!reviews.length) {
-      tbody.innerHTML = '<tr><td colspan="6" class="admin-empty">No hay reseñas</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" class="admin-empty">No reviews</td></tr>';
       return;
     }
 
@@ -479,6 +548,8 @@
       imagePreviewUrl = URL.createObjectURL(file);
       updateImagePreview(imagePreviewUrl);
     });
+    $("#deliveryTypeFile").addEventListener("change", () => updateDeliveryTypeUI("file"));
+    $("#deliveryTypeText").addEventListener("change", () => updateDeliveryTypeUI("text"));
     $("#productForm").addEventListener("submit", saveProduct);
     $("#productModal").addEventListener("click", (e) => {
       if (e.target === $("#productModal")) closeProductModal();

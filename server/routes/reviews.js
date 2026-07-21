@@ -5,7 +5,7 @@ const router = express.Router();
 
 router.get("/", (req, res) => {
   const reviews = db
-    .prepare("SELECT * FROM reviews WHERE approved = 1 ORDER BY created_at DESC LIMIT 50")
+    .prepare("SELECT * FROM reviews WHERE approved = 1 ORDER BY created_at DESC")
     .all()
     .map((r) => ({
       id: r.id,
@@ -28,19 +28,19 @@ router.post("/", (req, res) => {
   const { orderCode, customerName, stars, message, productName } = req.body;
 
   if (!stars || stars < 1 || stars > 5 || !message?.trim()) {
-    return res.status(400).json({ error: "Datos de reseña incompletos" });
+    return res.status(400).json({ error: "Incomplete review data" });
   }
 
   let order = null;
   if (orderCode) {
     order = db.prepare("SELECT * FROM orders WHERE order_code = ?").get(orderCode);
     if (order?.review_submitted) {
-      return res.status(400).json({ error: "Ya has dejado una reseña para este pedido" });
+      return res.status(400).json({ error: "You have already left a review for this order" });
     }
   }
 
-  const name = customerName || order?.customer_name || "Cliente";
-  const product = productName || "Producto digital";
+  const name = customerName || order?.customer_name || "Customer";
+  const product = productName || "Digital product";
 
   const result = db
     .prepare(

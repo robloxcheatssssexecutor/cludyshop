@@ -45,10 +45,19 @@ async function markOrderPaid(orderId) {
     );
   }
 
+  const itemsWithDelivery = db
+    .prepare(
+      `SELECT oi.*, p.delivery_type, p.delivery_text, p.digital_file
+       FROM order_items oi
+       LEFT JOIN products p ON p.id = oi.product_id
+       WHERE oi.order_id = ?`
+    )
+    .all(orderId);
+
   const updated = db.prepare("SELECT * FROM orders WHERE id = ?").get(orderId);
   const baseUrl = process.env.BASE_URL || "http://localhost:3000";
   const downloadUrl = `${baseUrl}/api/orders/download/${updated.download_token}`;
-  await sendOrderConfirmation(updated, items, downloadUrl);
+  await sendOrderConfirmation(updated, itemsWithDelivery, downloadUrl);
   return updated;
 }
 
@@ -184,6 +193,24 @@ router.get("/track/:code", (req, res) => {
   const items = db.prepare("SELECT * FROM order_items WHERE order_id = ?").all(order.id);
   const baseUrl = getBaseUrl(req);
 
+  let deliveries = null;
+  if (order.payment_status === "paid") {
+    deliveries = db
+      .prepare(
+        `SELECT oi.product_name, p.delivery_type, p.digital_file, p.delivery_text
+         FROM order_items oi
+         LEFT JOIN products p ON p.id = oi.product_id
+         WHERE oi.order_id = ?`
+      )
+      .all(order.id)
+      .map((item) => ({
+        name: item.product_name,
+        type: item.delivery_type || "file",
+        fileUrl: item.digital_file ? `/uploads/${item.digital_file}` : null,
+        text: item.delivery_text || null,
+      }));
+  }
+
   res.json({
     orderCode: order.order_code,
     customerName: order.customer_name,
@@ -195,6 +222,7 @@ router.get("/track/:code", (req, res) => {
     deliveredAt: order.delivered_at,
     reviewSubmitted: !!order.review_submitted,
     items: items.map((i) => ({ name: i.product_name, price: i.price, qty: i.qty })),
+    deliveries,
     downloadAvailable: order.payment_status === "paid",
     downloadUrl: order.payment_status === "paid" ? `${baseUrl}/api/orders/download/${order.download_token}` : null,
     ltcWallet: order.payment_method === "litecoin" ? process.env.LTC_WALLET_ADDRESS : null,
@@ -209,32 +237,52 @@ router.get("/download/:token", (req, res) => {
   if (order.payment_status !== "paid") return res.status(403).json({ error: "Pago pendiente" });
 
   const items = db.prepare(
-    `SELECT oi.*, p.digital_file, p.name as prod_name
+    `SELECT oi.*, p.digital_file, p.delivery_type, p.delivery_text, p.name as prod_name
      FROM order_items oi
      LEFT JOIN products p ON p.id = oi.product_id
      WHERE oi.order_id = ?`
   ).all(order.id);
 
-  const files = items.filter((i) => i.digital_file).map((i) => ({
-    name: i.prod_name,
-    file: i.digital_file,
+  const deliveries = items.map((item) => ({
+    name: item.prod_name,
+    type: item.delivery_type || "file",
+    file: item.digital_file,
+    text: item.delivery_text,
   }));
 
-  if (files.length === 1) {
+  const files = deliveries.filter((item) => item.type !== "text" && item.file);
+  const texts = deliveries.filter((item) => item.type === "text" && item.text);
+
+  if (files.length === 1 && texts.length === 0) {
     const filePath = path.join(uploadDir, files[0].file);
     if (fs.existsSync(filePath)) {
       return res.download(filePath, files[0].file);
     }
   }
 
+  if (files.length === 0 && texts.length === 1) {
+    res.type("html");
+    return res.send(`<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Entrega — ${order.order_code}</title>
+<style>body{font-family:sans-serif;background:#0a0a0f;color:#e8e8ed;max-width:640px;margin:40px auto;padding:24px}
+.box{background:#111118;border:1px solid rgba(0,82,255,0.2);border-radius:12px;padding:24px}
+h1{color:#1a7fff;font-size:1.25rem}pre{white-space:pre-wrap;word-break:break-word;background:#0a0a0f;padding:16px;border-radius:8px;margin-top:16px}</style></head>
+<body><div class="box"><h1>${texts[0].name}</h1><pre>${texts[0].text.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre></div></body></html>`);
+  }
+
   res.json({
     orderCode: order.order_code,
-    message: "Tus archivos digitales",
-    files: files.map((f) => ({
-      name: f.name,
-      url: `/uploads/${f.file}`,
+    message: "Tu contenido digital",
+    files: files.map((item) => ({
+      name: item.name,
+      url: `/uploads/${item.file}`,
     })),
-    note: files.length === 0 ? "Los archivos se entregarán por email. Contacta soporte en Discord si no los recibes." : null,
+    texts: texts.map((item) => ({
+      name: item.name,
+      content: item.text,
+    })),
+    note: files.length === 0 && texts.length === 0 ? "No hay contenido de entrega configurado. Contacta soporte en Discord." : null,
   });
 });
 

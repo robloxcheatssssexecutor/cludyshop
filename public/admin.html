@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -17,19 +17,19 @@
     <div class="admin-login-card">
       <div class="admin-login-header">
         <span class="logo-icon">C</span>
-        <h1>Panel Admin</h1>
+        <h1>Admin Panel</h1>
         <p>Cludy Shop</p>
       </div>
       <form id="loginForm">
         <label>
-          <span>Usuario</span>
+          <span>Username</span>
           <input type="text" id="loginUser" required autocomplete="username">
         </label>
         <label>
-          <span>Contraseña</span>
+          <span>Password</span>
           <input type="password" id="loginPass" required autocomplete="current-password">
         </label>
-        <button type="submit" class="btn btn-primary btn-block">Entrar</button>
+        <button type="submit" class="btn btn-primary btn-block">Sign in</button>
       </form>
     </div>
   </section>
@@ -43,13 +43,13 @@
       </a>
       <nav class="admin-nav">
         <button type="button" class="admin-nav-btn active" data-tab="dashboard">Dashboard</button>
-        <button type="button" class="admin-nav-btn" data-tab="products">Productos</button>
-        <button type="button" class="admin-nav-btn" data-tab="orders">Pedidos</button>
-        <button type="button" class="admin-nav-btn" data-tab="reviews">Reseñas</button>
+        <button type="button" class="admin-nav-btn" data-tab="products">Products</button>
+        <button type="button" class="admin-nav-btn" data-tab="orders">Orders</button>
+        <button type="button" class="admin-nav-btn" data-tab="reviews">Reviews</button>
       </nav>
       <div class="admin-sidebar-footer">
         <span id="adminUserLabel"></span>
-        <button type="button" id="logoutBtn" class="btn btn-outline btn-sm">Salir</button>
+        <button type="button" id="logoutBtn" class="btn btn-outline btn-sm">Sign out</button>
       </div>
     </aside>
 
@@ -63,20 +63,20 @@
       <!-- Products -->
       <section id="tab-products" class="admin-tab">
         <div class="admin-tab-header">
-          <h2 class="admin-title">Productos</h2>
-          <button type="button" class="btn btn-primary" id="newProductBtn">+ Nuevo producto</button>
+          <h2 class="admin-title">Products</h2>
+          <button type="button" class="btn btn-primary" id="newProductBtn">+ New product</button>
         </div>
         <div class="admin-table-wrap">
           <table class="admin-table" id="productsTable">
             <thead>
               <tr>
-                <th>Producto</th>
-                <th>Categoría</th>
-                <th>Precio</th>
+                <th>Product</th>
+                <th>Category</th>
+                <th>Price</th>
                 <th>Stock</th>
-                <th>Ventas</th>
-                <th>Visibilidad</th>
-                <th>Estado</th>
+                <th>Sales</th>
+                <th>Visibility</th>
+                <th>Status</th>
                 <th></th>
               </tr>
             </thead>
@@ -87,17 +87,17 @@
 
       <!-- Orders -->
       <section id="tab-orders" class="admin-tab">
-        <h2 class="admin-title">Pedidos</h2>
+        <h2 class="admin-title">Orders</h2>
         <div class="admin-table-wrap">
           <table class="admin-table" id="ordersTable">
             <thead>
               <tr>
-                <th>Código</th>
-                <th>Cliente</th>
+                <th>Code</th>
+                <th>Customer</th>
                 <th>Total</th>
-                <th>Método</th>
-                <th>Estado</th>
-                <th>Fecha</th>
+                <th>Method</th>
+                <th>Status</th>
+                <th>Date</th>
                 <th></th>
               </tr>
             </thead>
@@ -109,25 +109,26 @@
       <!-- Reviews -->
       <section id="tab-reviews" class="admin-tab">
         <div class="admin-tab-header">
-          <h2 class="admin-title">Reseñas</h2>
+          <h2 class="admin-title">Reviews</h2>
           <div class="admin-actions">
-            <button type="button" class="btn btn-primary" id="importDiscordBtn">Importar desde Discord</button>
+            <button type="button" class="btn btn-primary" id="importDiscordBtn">Import from Discord</button>
             <label class="btn btn-outline admin-file-btn">
-              Subir vouches.json
+              Upload vouches.json
               <input type="file" id="importDiscordFile" accept=".json,application/json" hidden>
             </label>
           </div>
         </div>
-        <p class="admin-hint" id="importDiscordHint">Sincroniza los vouches del bot de Discord. Solo importa reseñas nuevas.</p>
+        <p class="admin-hint" id="importDiscordHint">Sync vouches from the Discord bot. Only imports new reviews.</p>
+        <p class="admin-hint" id="reviewsCountLabel"></p>
         <div class="admin-table-wrap">
           <table class="admin-table" id="reviewsTable">
             <thead>
               <tr>
-                <th>Cliente</th>
-                <th>Producto</th>
-                <th>Estrellas</th>
-                <th>Mensaje</th>
-                <th>Estado</th>
+                <th>Customer</th>
+                <th>Product</th>
+                <th>Stars</th>
+                <th>Message</th>
+                <th>Status</th>
                 <th></th>
               </tr>
             </thead>
@@ -142,27 +143,27 @@
   <div class="modal-overlay" id="productModal">
     <div class="modal admin-modal-content">
       <div class="modal-header">
-        <h3 id="productModalTitle">Nuevo producto</h3>
-        <button type="button" class="modal-close" id="closeProductModal" aria-label="Cerrar">&times;</button>
+        <h3 id="productModalTitle">New product</h3>
+        <button type="button" class="modal-close" id="closeProductModal" aria-label="Close">&times;</button>
       </div>
       <form id="productForm" class="modal-body" enctype="multipart/form-data">
         <input type="hidden" id="productId">
 
         <div class="admin-form-grid">
           <label class="admin-field full">
-            <span>Nombre *</span>
+            <span>Name *</span>
             <input type="text" id="productName" required>
           </label>
           <label class="admin-field full">
-            <span>Descripción</span>
+            <span>Description</span>
             <textarea id="productDesc" rows="3"></textarea>
           </label>
           <label class="admin-field">
-            <span>Precio (€) *</span>
+            <span>Price (€) *</span>
             <input type="number" id="productPrice" step="0.01" min="0" required>
           </label>
           <label class="admin-field">
-            <span>Categoría</span>
+            <span>Category</span>
             <select id="productCategory">
               <option value="tools">Tools</option>
               <option value="methods">Methods</option>
@@ -170,70 +171,91 @@
             </select>
           </label>
           <label class="admin-field">
-            <span>Stock (-1 = ilimitado)</span>
+            <span>Stock (-1 = unlimited)</span>
             <input type="number" id="productStock" value="-1">
           </label>
           <label class="admin-field">
-            <span>Compras totales</span>
-            <input type="number" id="productPurchases" readonly disabled title="Se actualiza automáticamente al vender">
+            <span>Total purchases</span>
+            <input type="number" id="productPurchases" readonly disabled title="Updates automatically when sold">
           </label>
         </div>
 
         <fieldset class="admin-fieldset">
-          <legend>Visibilidad en tienda</legend>
+          <legend>Store visibility</legend>
           <label class="admin-check">
             <input type="checkbox" id="productShowStock">
-            <span>Mostrar stock en la ficha del producto</span>
+            <span>Show stock on product page</span>
           </label>
           <label class="admin-check">
             <input type="checkbox" id="productShowPurchases" checked>
-            <span>Mostrar cantidad de compras ("X vendidos")</span>
+            <span>Show purchase count ("X sold")</span>
           </label>
         </fieldset>
 
         <fieldset class="admin-fieldset">
-          <legend>Oferta</legend>
+          <legend>Offer</legend>
           <label class="admin-check">
             <input type="checkbox" id="productOfferActive">
-            <span>Oferta activa</span>
+            <span>Active offer</span>
           </label>
           <div class="admin-form-grid">
             <label class="admin-field">
-              <span>Precio oferta (€)</span>
+              <span>Offer price (€)</span>
               <input type="number" id="productOfferPrice" step="0.01" min="0">
             </label>
             <label class="admin-field">
-              <span>Etiqueta oferta</span>
-              <input type="text" id="productOfferLabel" placeholder="-30% OFERTA">
+              <span>Offer label</span>
+              <input type="text" id="productOfferLabel" placeholder="-30% OFF">
             </label>
           </div>
         </fieldset>
 
         <fieldset class="admin-fieldset">
-          <legend>Archivos</legend>
+          <legend>Image</legend>
           <label class="admin-field">
-            <span>Imagen del producto</span>
-            <div class="admin-image-preview hidden" id="productImagePreview">
-              <img id="productImagePreviewImg" alt="Vista previa del producto">
+            <span>Product image (optional)</span>
+            <div class="admin-image-preview" id="productImagePreview">
+              <img id="productImagePreviewImg" alt="Product preview" class="hidden">
+              <span class="product-placeholder" id="productImagePlaceholder" aria-hidden="true">📦</span>
             </div>
             <input type="file" id="productImage" accept="image/*">
+            <small class="admin-hint">If no image is uploaded, a 📦 box will be shown in the store.</small>
             <small id="currentImageHint" class="admin-hint hidden"></small>
           </label>
-          <label class="admin-field">
-            <span>Archivo digital (entrega al cliente)</span>
+        </fieldset>
+
+        <fieldset class="admin-fieldset">
+          <legend>Customer delivery</legend>
+          <div class="admin-delivery-type">
+            <label class="admin-check">
+              <input type="radio" name="deliveryType" id="deliveryTypeFile" value="file" checked>
+              <span>Downloadable file</span>
+            </label>
+            <label class="admin-check">
+              <input type="radio" name="deliveryType" id="deliveryTypeText" value="text">
+              <span>Text</span>
+            </label>
+          </div>
+          <label class="admin-field" id="deliveryFileWrap">
+            <span>Digital file</span>
             <input type="file" id="productDigitalFile">
             <small id="currentFileHint" class="admin-hint hidden"></small>
+          </label>
+          <label class="admin-field hidden" id="deliveryTextWrap">
+            <span>Delivery content</span>
+            <textarea id="productDeliveryText" rows="5" placeholder="Key, link, instructions, etc."></textarea>
+            <small id="currentTextHint" class="admin-hint hidden"></small>
           </label>
         </fieldset>
 
         <label class="admin-check" id="productActiveWrap">
           <input type="checkbox" id="productActive" checked>
-          <span>Producto activo (visible en tienda)</span>
+          <span>Active product (visible in store)</span>
         </label>
 
         <div class="admin-form-actions">
-          <button type="button" class="btn btn-outline" id="cancelProductBtn">Cancelar</button>
-          <button type="submit" class="btn btn-primary" id="saveProductBtn">Guardar</button>
+          <button type="button" class="btn btn-outline" id="cancelProductBtn">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="saveProductBtn">Save</button>
         </div>
       </form>
     </div>

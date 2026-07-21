@@ -7,6 +7,7 @@ const dir = path.dirname(dbPath);
 
 let sqlDb = null;
 let persistEnabled = false;
+let saveSuppressed = 0;
 
 function saveDb() {
   if (!persistEnabled || !sqlDb) return;
@@ -58,14 +59,33 @@ const db = {
         sqlDb.run(sql, params);
         const lastInsertRowid = sqlDb.exec("SELECT last_insert_rowid() as id")[0]?.values[0][0];
         const changes = sqlDb.getRowsModified();
-        saveDb();
+        if (saveSuppressed === 0) saveDb();
         return { lastInsertRowid, changes };
       },
     };
   },
   exec(sql) {
     sqlDb.exec(sql);
-    saveDb();
+    if (saveSuppressed === 0) saveDb();
+  },
+  batch(fn) {
+    saveSuppressed++;
+    sqlDb.run("BEGIN TRANSACTION");
+    try {
+      const result = fn();
+      sqlDb.run("COMMIT");
+      return result;
+    } catch (err) {
+      try {
+        sqlDb.run("ROLLBACK");
+      } catch {
+        /* ignore rollback failure */
+      }
+      throw err;
+    } finally {
+      saveSuppressed--;
+      if (saveSuppressed === 0) saveDb();
+    }
   },
 };
 
@@ -99,6 +119,8 @@ async function initDb() {
       offer_active INTEGER DEFAULT 0,
       offer_label TEXT DEFAULT '',
       digital_file TEXT DEFAULT '',
+      delivery_type TEXT DEFAULT 'file',
+      delivery_text TEXT DEFAULT '',
       active INTEGER DEFAULT 1,
       created_at TEXT DEFAULT (datetime('now'))
     );
@@ -162,6 +184,14 @@ async function initDb() {
   };
   for (const [from, to] of Object.entries(legacyCategoryMap)) {
     db.prepare("UPDATE products SET category = ? WHERE category = ?").run(to, from);
+  }
+
+  const productColumns = db.prepare("PRAGMA table_info(products)").all().map((col) => col.name);
+  if (!productColumns.includes("delivery_type")) {
+    db.exec("ALTER TABLE products ADD COLUMN delivery_type TEXT DEFAULT 'file'");
+  }
+  if (!productColumns.includes("delivery_text")) {
+    db.exec("ALTER TABLE products ADD COLUMN delivery_text TEXT DEFAULT ''");
   }
 
   const reviewColumns = db.prepare("PRAGMA table_info(reviews)").all().map((col) => col.name);

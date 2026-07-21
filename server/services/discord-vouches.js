@@ -60,27 +60,32 @@ function importVouches(db, vouchesData, options = {}) {
   const total = vouches.length;
   const baseTime = Date.now();
 
-  vouches.forEach((vouch, index) => {
-    const sourceId = `discord:${userId}:${index}`;
-    if (existing.has(sourceId)) {
-      skipped++;
-      return;
-    }
+  db.batch(() => {
+    vouches.forEach((vouch, index) => {
+      const sourceId = `discord:${userId}:${index}`;
+      if (existing.has(sourceId)) {
+        skipped++;
+        return;
+      }
 
-    const message = String(vouch.message || "").trim();
-    const name = String(vouch.from || "Cliente").trim() || "Cliente";
-    if (!message) {
-      skipped++;
-      return;
-    }
+      const message = String(vouch.message || "").trim();
+      const name = String(vouch.from || "Cliente").trim() || "Cliente";
+      if (!message) {
+        skipped++;
+        return;
+      }
 
-    const createdAt = new Date(baseTime - (total - index) * 60 * 60 * 1000).toISOString();
-    insert.run(name, parseStars(message), message, parseProductName(message), createdAt, sourceId);
-    existing.add(sourceId);
-    imported++;
+      const createdAt = new Date(baseTime - (total - index) * 60 * 60 * 1000).toISOString();
+      insert.run(name, parseStars(message), message, parseProductName(message), createdAt, sourceId);
+      existing.add(sourceId);
+      imported++;
+    });
   });
 
-  return { imported, skipped, total, userId };
+  const inDatabase = db.prepare("SELECT COUNT(*) as c FROM reviews").get().c;
+  const visible = db.prepare("SELECT COUNT(*) as c FROM reviews WHERE approved = 1").get().c;
+
+  return { imported, skipped, total, userId, inDatabase, visible };
 }
 
 function loadVouchesFile(filePath) {

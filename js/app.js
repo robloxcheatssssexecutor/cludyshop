@@ -244,8 +244,8 @@
     grid.innerHTML = [...reviews]
       .reverse()
       .map(
-        (r, i) => `
-      <article class="review-card" style="animation-delay:${i * 0.05}s">
+        (r) => `
+      <article class="review-card">
         <div class="review-header">
           <div class="review-avatar">${r.name.charAt(0)}</div>
           <div class="review-meta">

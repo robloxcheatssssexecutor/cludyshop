@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mi cuenta — Cludy Shop</title>
+  <title>My Account — Cludy Shop</title>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/styles.css">
 </head>
@@ -18,9 +18,9 @@
       </a>
 
       <nav class="nav">
-        <a href="/" class="nav-link">Tienda</a>
-        <a href="/track.html" class="nav-link">Seguimiento</a>
-        <a href="/account.html" class="nav-link active">Cuenta</a>
+        <a href="/" class="nav-link">Store</a>
+        <a href="/track.html" class="nav-link">Track Order</a>
+        <a href="/account.html" class="nav-link active">Account</a>
       </nav>
 
       <div class="header-actions">
@@ -30,7 +30,7 @@
         </a>
         <a href="/account.html" class="header-auth-btn header-auth-btn-accent header-account-btn hidden">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          Mi cuenta
+          My Account
         </a>
       </div>
     </div>
@@ -41,57 +41,57 @@
 
       <section id="accountLogin" class="account-card">
         <div class="account-card-header">
-          <span class="section-tag">Acceso</span>
-          <h1 class="section-title">Iniciar sesión</h1>
-          <p class="section-desc">Entra con tu cuenta para acceder a tu área personal.</p>
+          <span class="section-tag">Access</span>
+          <h1 class="section-title">Sign in</h1>
+          <p class="section-desc">Log in with your account to access your personal area.</p>
         </div>
         <form id="loginForm" class="account-form">
           <div class="form-group">
-            <label for="loginUser">Usuario</label>
-            <input type="text" id="loginUser" required autocomplete="username" placeholder="Tu usuario">
+            <label for="loginUser">Username</label>
+            <input type="text" id="loginUser" required autocomplete="username" placeholder="Your username">
           </div>
           <div class="form-group">
-            <label for="loginPass">Contraseña</label>
-            <input type="password" id="loginPass" required autocomplete="current-password" placeholder="Tu contraseña">
+            <label for="loginPass">Password</label>
+            <input type="password" id="loginPass" required autocomplete="current-password" placeholder="Your password">
           </div>
-          <button type="submit" class="btn btn-primary btn-full">Entrar</button>
+          <button type="submit" class="btn btn-primary btn-full">Sign in</button>
         </form>
       </section>
 
       <section id="accountDashboard" class="account-card hidden">
         <div class="account-card-header">
-          <span class="section-tag">Tu cuenta</span>
-          <h1 class="section-title">Hola, <span id="accountUser"></span></h1>
-          <p class="section-desc">Gestiona tu acceso y consulta tus pedidos.</p>
+          <span class="section-tag">Your account</span>
+          <h1 class="section-title">Hello, <span id="accountUser"></span></h1>
+          <p class="section-desc">Manage your access and view your orders.</p>
         </div>
 
         <div class="account-actions">
           <a href="/track.html" class="account-action-card">
             <span class="account-action-icon">🔍</span>
             <div>
-              <h3>Seguimiento de pedidos</h3>
-              <p>Consulta el estado de tus compras con tu código CLUDY-XXXXXX.</p>
+              <h3>Order tracking</h3>
+              <p>Check the status of your purchases with your CLUDY-XXXXXX code.</p>
             </div>
           </a>
 
           <a href="/" class="account-action-card">
             <span class="account-action-icon">🛒</span>
             <div>
-              <h3>Ir a la tienda</h3>
-              <p>Explora el catálogo y compra productos digitales.</p>
+              <h3>Go to store</h3>
+              <p>Browse the catalog and buy digital products.</p>
             </div>
           </a>
 
           <a href="/admin.html" id="adminSection" class="account-action-card account-action-admin hidden">
             <span class="account-action-icon">⚙️</span>
             <div>
-              <h3>Panel Admin</h3>
-              <p>Gestiona productos, pedidos y reseñas de la tienda.</p>
+              <h3>Admin Panel</h3>
+              <p>Manage products, orders and store reviews.</p>
             </div>
           </a>
         </div>
 
-        <button type="button" class="btn btn-outline btn-full" id="logoutBtn">Cerrar sesión</button>
+        <button type="button" class="btn btn-outline btn-full" id="logoutBtn">Sign out</button>
       </section>
 
     </div>

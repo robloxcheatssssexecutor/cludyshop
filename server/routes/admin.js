@@ -51,6 +51,28 @@ function removeUpload(relativePath) {
   if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
 }
 
+function resolveProductDelivery(req, product = null) {
+  const deliveryType = req.body.deliveryType === "text" ? "text" : "file";
+  let digitalFile = product?.digital_file || "";
+  let deliveryText = product?.delivery_text || "";
+
+  if (deliveryType === "text") {
+    if (product?.digital_file) removeUpload(product.digital_file);
+    digitalFile = "";
+    if (req.body.deliveryText !== undefined) {
+      deliveryText = String(req.body.deliveryText).trim();
+    }
+  } else {
+    deliveryText = "";
+    if (req.files?.digitalFile?.[0]) {
+      if (product?.digital_file) removeUpload(product.digital_file);
+      digitalFile = req.files.digitalFile[0].filename;
+    }
+  }
+
+  return { deliveryType, digitalFile, deliveryText };
+}
+
 router.post("/login", (req, res) => {
   const { username, password } = req.body;
   if (username !== process.env.ADMIN_USER || password !== process.env.ADMIN_PASSWORD) {
@@ -99,13 +121,20 @@ router.post("/products", authMiddleware, productUpload, (req, res) => {
   }
 
   const imageUrl = req.files?.image?.[0] ? `/uploads/${req.files.image[0].filename}` : "";
-  const digitalFile = req.files?.digitalFile?.[0]?.filename || "";
+  const { deliveryType, digitalFile, deliveryText } = resolveProductDelivery(req);
+
+  if (deliveryType === "text" && !deliveryText) {
+    return res.status(400).json({ error: "El texto de entrega es requerido" });
+  }
+  if (deliveryType === "file" && !digitalFile) {
+    return res.status(400).json({ error: "El archivo de entrega es requerido" });
+  }
 
   const result = db
     .prepare(
       `INSERT INTO products (name, description, price, category, image_url, stock, show_stock, show_purchases,
-       offer_active, offer_price, offer_label, digital_file)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       offer_active, offer_price, offer_label, digital_file, delivery_type, delivery_text)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       name.trim(),
@@ -119,7 +148,9 @@ router.post("/products", authMiddleware, productUpload, (req, res) => {
       offerActive === "1" || offerActive === true || offerActive === 1 ? 1 : 0,
       offerPrice !== undefined && offerPrice !== "" ? Number(offerPrice) : null,
       offerLabel || "",
-      digitalFile
+      digitalFile,
+      deliveryType,
+      deliveryText
     );
 
   res.json({ id: result.lastInsertRowid });
@@ -133,13 +164,20 @@ function updateProduct(req, res) {
     req.body;
 
   let imageUrl = product.image_url;
-  let digitalFile = product.digital_file;
   if (req.files?.image?.[0]) imageUrl = `/uploads/${req.files.image[0].filename}`;
-  if (req.files?.digitalFile?.[0]) digitalFile = req.files.digitalFile[0].filename;
+  const { deliveryType, digitalFile, deliveryText } = resolveProductDelivery(req, product);
+
+  if (deliveryType === "text" && !deliveryText) {
+    return res.status(400).json({ error: "El texto de entrega es requerido" });
+  }
+  if (deliveryType === "file" && !digitalFile) {
+    return res.status(400).json({ error: "El archivo de entrega es requerido" });
+  }
 
   db.prepare(
     `UPDATE products SET name=?, description=?, price=?, category=?, image_url=?, stock=?,
-     show_stock=?, show_purchases=?, offer_active=?, offer_price=?, offer_label=?, digital_file=?, active=?
+     show_stock=?, show_purchases=?, offer_active=?, offer_price=?, offer_label=?, digital_file=?,
+     delivery_type=?, delivery_text=?, active=?
      WHERE id=?`
   ).run(
     name?.trim() || product.name,
@@ -154,6 +192,8 @@ function updateProduct(req, res) {
     offerPrice !== undefined && offerPrice !== "" ? Number(offerPrice) : product.offer_price,
     offerLabel ?? product.offer_label,
     digitalFile,
+    deliveryType,
+    deliveryText,
     active !== undefined ? (active === "1" || active === true || active === 1 ? 1 : 0) : product.active,
     req.params.id
   );
@@ -177,7 +217,9 @@ router.delete("/products/:id/permanent", authMiddleware, (req, res) => {
   if (!product) return res.status(404).json({ error: "No encontrado" });
 
   removeUpload(product.image_url);
-  removeUpload(product.digital_file);
+  if ((product.delivery_type || "file") === "file" && product.digital_file) {
+    removeUpload(product.digital_file);
+  }
   db.prepare("DELETE FROM products WHERE id = ?").run(req.params.id);
   res.json({ ok: true });
 });
@@ -239,7 +281,7 @@ router.post("/reviews/import-discord", authMiddleware, optionalVouchesUpload, (r
       return res.status(400).json({ error: result.error });
     }
 
-    res.json({ ok: true, ...result, path: savedPath });
+    res.json({ ok: true, ...result, path: savedPath, inDatabase: result.inDatabase, visible: result.visible });
   } catch (err) {
     if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
     res.status(400).json({ error: err.message || "Error al importar vouches" });

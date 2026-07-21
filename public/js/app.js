@@ -6,6 +6,7 @@
   let cart = [];
   let products = [];
   let reviews = [];
+  let reviewStats = { total: 0, average: 0 };
   let config = {};
   let selectedStars = 0;
   let currentFilter = "all";
@@ -49,7 +50,7 @@
       ...opts,
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || "Error de servidor");
+    if (!res.ok) throw new Error(data.error || "Server error");
     return data;
   }
 
@@ -78,8 +79,7 @@
 
   function productImage(p) {
     if (p.imageUrl) return `<img src="${p.imageUrl}" alt="${escapeHtml(p.name)}" loading="lazy">`;
-    const emojis = { tools: "🛠️", methods: "📘", variety: "✨", digital: "💾" };
-    return emojis[p.category] || "💾";
+    return `<span class="product-placeholder" aria-hidden="true">📦</span>`;
   }
 
   function categoryLabel(category) {
@@ -95,8 +95,8 @@
 
     let meta = "";
     if (p.showStock && p.stock !== -1) meta += `<span class="product-meta">Stock: ${p.stock}</span>`;
-    if (p.showPurchases) meta += `<span class="product-meta">${p.purchaseCount} vendidos</span>`;
-    if (!p.inStock) meta += `<span class="product-meta" style="color:var(--danger)">Agotado</span>`;
+    if (p.showPurchases) meta += `<span class="product-meta">${p.purchaseCount} sold</span>`;
+    if (!p.inStock) meta += `<span class="product-meta" style="color:var(--danger)">Out of stock</span>`;
 
     return `
       <article class="product-card" style="animation-delay:${i * 0.06}s" data-id="${p.id}">
@@ -111,7 +111,7 @@
           ${meta ? `<div class="product-meta-row">${meta}</div>` : ""}
           <div class="product-footer">
             ${priceHtml}
-            <button class="add-to-cart" data-id="${p.id}" ${!p.inStock ? "disabled" : ""} aria-label="Añadir ${escapeHtml(p.name)}">+</button>
+            <button class="add-to-cart" data-id="${p.id}" ${!p.inStock ? "disabled" : ""} aria-label="Add ${escapeHtml(p.name)}">+</button>
           </div>
         </div>
       </article>`;
@@ -160,7 +160,7 @@
     }
     saveCart();
     updateCartUI();
-    showToast(`${product.name} añadido al carrito`);
+    showToast(`${product.name} added to cart`);
   }
 
   function removeFromCart(productId) {
@@ -210,8 +210,8 @@
       .map(
         (item) => `
       <div class="cart-item">
-        <span class="cart-item-emoji">${item.imageUrl ? "📦" : "💾"}</span>
-        <div class="cart-item-info"><h4>${escapeHtml(item.name)}</h4><span>${formatPrice(item.price)} c/u</span></div>
+        <span class="cart-item-emoji">${item.imageUrl ? `<img src="${item.imageUrl}" alt="" class="cart-item-thumb">` : "📦"}</span>
+        <div class="cart-item-info"><h4>${escapeHtml(item.name)}</h4><span>${formatPrice(item.price)} each</span></div>
         <div class="cart-item-qty">
           <button data-id="${item.id}" data-delta="-1">−</button><span>${item.qty}</span>
           <button data-id="${item.id}" data-delta="1">+</button>
@@ -239,8 +239,8 @@
 
   async function fetchReviews() {
     reviews = await api("/api/reviews");
-    const stats = await api("/api/reviews/stats");
-    $("#statReviews").textContent = stats.total + "+";
+    reviewStats = await api("/api/reviews/stats");
+    $("#statReviews").textContent = reviewStats.total + "+";
     renderReviews();
   }
 
@@ -259,21 +259,23 @@
     empty.classList.add("hidden");
     summary.classList.remove("hidden");
 
-    const avg = reviews.reduce((s, r) => s + r.stars, 0) / reviews.length;
+    const avg = reviewStats.average || (reviews.reduce((s, r) => s + r.stars, 0) / reviews.length);
+    const total = reviewStats.total || reviews.length;
+    const barBase = total || reviews.length;
     const bars = [5, 4, 3, 2, 1].map((star) => {
       const count = reviews.filter((r) => r.stars === star).length;
-      return { star, count, pct: (count / reviews.length) * 100 };
+      return { star, count, pct: barBase ? (count / barBase) * 100 : 0 };
     });
 
     summary.innerHTML = `
-      <div class="summary-score"><div class="big">${avg.toFixed(1)}</div><div class="stars-display">${renderStars(Math.round(avg))}</div><div class="count">${reviews.length} reseña${reviews.length !== 1 ? "s" : ""}</div></div>
+      <div class="summary-score"><div class="big">${avg.toFixed(1)}</div><div class="stars-display">${renderStars(Math.round(avg))}</div><div class="count">${total} review${total !== 1 ? "s" : ""}</div></div>
       <div class="summary-bars">${bars.map((b) => `<div class="bar-row"><span>${b.star}</span><div class="bar-track"><div class="bar-fill" style="width:${b.pct}%"></div></div><span>${b.count}</span></div>`).join("")}</div>`;
 
     grid.innerHTML = reviews
       .map(
-        (r, i) => `
-      <article class="review-card" style="animation-delay:${i * 0.05}s">
-        <div class="review-header"><div class="review-avatar">${r.name.charAt(0)}</div><div class="review-meta"><h4>${escapeHtml(r.name)}</h4><span class="review-date">${new Date(r.date).toLocaleDateString("es-ES", { year: "numeric", month: "long", day: "numeric" })}</span></div></div>
+        (r) => `
+      <article class="review-card">
+        <div class="review-header"><div class="review-avatar">${r.name.charAt(0)}</div><div class="review-meta"><h4>${escapeHtml(r.name)}</h4><span class="review-date">${new Date(r.date).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</span></div></div>
         <div class="review-stars">${renderStars(r.stars)}</div>
         <span class="review-product-tag">${escapeHtml(r.product)}</span>
         <p class="review-text">${escapeHtml(r.message)}</p>
@@ -295,11 +297,11 @@
     const name = $("#customerName").value.trim();
     const email = $("#customerEmail").value.trim();
     const payment = document.querySelector('input[name="payment"]:checked');
-    if (!payment) return showToast("Selecciona un método de pago", "warning");
+    if (!payment) return showToast("Select a payment method", "warning");
 
     const btn = $("#checkoutSubmit");
     btn.disabled = true;
-    btn.textContent = "Procesando...";
+    btn.textContent = "Processing...";
 
     try {
       const result = await api("/api/orders/create", {
@@ -322,7 +324,7 @@
       closeModal("#cartModal");
 
       if (result.paymentMethod === "stripe" && result.stripeUrl) {
-        showToast("Redirigiendo a Stripe...");
+        showToast("Redirecting to Stripe...");
         window.location.href = result.stripeUrl;
         return;
       }
@@ -340,7 +342,7 @@
       showToast(err.message, "warning");
     } finally {
       btn.disabled = false;
-      btn.textContent = "Confirmar pedido";
+      btn.textContent = "Confirm order";
     }
   }
 
@@ -352,7 +354,7 @@
     $("#ltcTrackLink").href = result.trackUrl;
     $("#ltcTxHash").value = "";
     openModal("#ltcModal");
-    showToast("Pedido creado — envía el LTC y confirma el hash");
+    showToast("Order created — send the LTC and confirm the hash");
   }
 
   function showPaypalModal(result) {
@@ -362,19 +364,19 @@
     $("#paypalNote").textContent = result.paypalNote;
     $("#paypalTrackLink").href = result.trackUrl;
     openModal("#paypalModal");
-    showToast("Pedido creado — completa el pago PayPal");
+    showToast("Order created — complete the PayPal payment");
   }
 
   async function confirmLtc() {
     const txHash = $("#ltcTxHash").value.trim();
-    if (!txHash) return showToast("Introduce el hash de transacción", "warning");
+    if (!txHash) return showToast("Enter the transaction hash", "warning");
     try {
       await api(`/api/orders/${lastOrderCode}/confirm-ltc`, {
         method: "POST",
         body: JSON.stringify({ txHash }),
       });
       closeModal("#ltcModal");
-      showToast("Transacción registrada. Te avisaremos por email.");
+      showToast("Transaction registered. We'll notify you by email.");
       promptReview();
     } catch (err) {
       showToast(err.message, "warning");
@@ -383,7 +385,7 @@
 
   async function handleReviewSubmit(e) {
     e.preventDefault();
-    if (!selectedStars) return showToast("Selecciona entre 1 y 5 estrellas", "warning");
+    if (!selectedStars) return showToast("Select between 1 and 5 stars", "warning");
 
     try {
       await api("/api/reviews", {
@@ -397,7 +399,7 @@
         }),
       });
       closeModal("#reviewModal");
-      showToast("¡Gracias! Tu reseña ha sido publicada.");
+      showToast("Thank you! Your review has been published.");
       fetchReviews();
     } catch (err) {
       showToast(err.message, "warning");
@@ -529,14 +531,14 @@
     $("#ltcConfirm").addEventListener("click", confirmLtc);
     $("#ltcCopy").addEventListener("click", () => {
       navigator.clipboard.writeText($("#ltcAddress").value);
-      showToast("Dirección copiada");
+      showToast("Address copied");
     });
   }
 
   async function checkStripeReturn() {
     const params = new URLSearchParams(window.location.search);
     const code = params.get("code") || new URLSearchParams(window.location.hash.slice(1)).get("code");
-    if (params.get("cancelled")) showToast("Pago cancelado", "warning");
+    if (params.get("cancelled")) showToast("Payment cancelled", "warning");
   }
 
   async function init() {
