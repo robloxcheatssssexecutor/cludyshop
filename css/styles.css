@@ -156,6 +156,19 @@ body {
   color: var(--white);
 }
 
+.logo-img {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.footer-logo-img {
+  width: 32px;
+  height: 32px;
+}
+
 .nav-link:hover,
 .nav-link.active {
   color: var(--white);
@@ -1968,6 +1981,92 @@ body {
   border-top: 1px solid rgba(0, 82, 255, 0.1);
 }
 
+.admin-offers-layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 420px) 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.admin-branding-layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 420px) 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.admin-branding-logo-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 96px;
+  margin-bottom: 20px;
+  padding: 20px;
+  background: rgba(0, 82, 255, 0.06);
+  border: 1px dashed rgba(0, 82, 255, 0.25);
+  border-radius: var(--radius-lg);
+}
+
+.admin-branding-logo-preview .logo-img {
+  width: 64px;
+  height: 64px;
+}
+
+.admin-branding-logo-preview .logo-icon {
+  width: 64px;
+  height: 64px;
+  font-size: 1.8rem;
+}
+
+.admin-offers-card {
+  background: var(--black-card);
+  border: 1px solid rgba(0, 82, 255, 0.15);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+}
+
+.admin-offers-heading {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  margin: 0 0 16px;
+  color: var(--gray-100);
+}
+
+.admin-offers-card .admin-tab-header {
+  margin-bottom: 8px;
+}
+
+.admin-offers-card .admin-tab-header .admin-offers-heading {
+  margin-bottom: 0;
+}
+
+.admin-offer-picker {
+  margin-bottom: 16px;
+}
+
+.admin-offer-picker-toolbar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.admin-offer-product-list {
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid rgba(0, 82, 255, 0.15);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.admin-offer-product-list .admin-check {
+  margin-bottom: 6px;
+}
+
+.admin-offer-product-list .admin-check:last-child {
+  margin-bottom: 0;
+}
+
 .hidden { display: none !important; }
 
 /* ---- ACCOUNT PAGE ---- */
@@ -2064,4 +2163,6 @@ body {
   .admin-nav { flex-direction: row; flex-wrap: wrap; flex: none; width: 100%; }
   .admin-sidebar-footer { flex-direction: row; align-items: center; border-top: none; width: 100%; }
   .admin-form-grid { grid-template-columns: 1fr; }
+  .admin-offers-layout { grid-template-columns: 1fr; }
+  .admin-branding-layout { grid-template-columns: 1fr; }
 }

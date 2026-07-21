@@ -19,6 +19,13 @@ const {
 } = require("../services/product-catalog");
 const { authMiddleware } = require("../middleware/auth");
 const { markOrderPaid } = require("./orders");
+const {
+  applyBulkOffers,
+  clearOffers,
+  deactivateExpiredOffers,
+  isOfferCurrentlyActive,
+} = require("../services/product-offers");
+const { getBranding, setBranding } = require("../services/site-branding");
 
 const router = express.Router();
 
@@ -32,6 +39,7 @@ const storage = multer.diskStorage({
   },
 });
 const upload = multer({ storage, limits: { fileSize: 50 * 1024 * 1024 } });
+const brandingUpload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
 
 function productUpload(req, res, next) {
   const contentType = req.headers["content-type"] || "";
@@ -128,9 +136,93 @@ router.get("/stats", authMiddleware, (req, res) => {
   res.json({ products, orders, revenue, pending });
 });
 
+router.get("/branding", authMiddleware, (req, res) => {
+  res.json(getBranding(db));
+});
+
+router.put("/branding", authMiddleware, (req, res, next) => {
+  const contentType = req.headers["content-type"] || "";
+  if (contentType.includes("multipart/form-data")) {
+    return brandingUpload.fields([
+      { name: "logo", maxCount: 1 },
+      { name: "removeLogo", maxCount: 1 },
+    ])(req, res, (err) => {
+      if (err) return res.status(400).json({ error: err.message || "Error al subir logo" });
+      next();
+    });
+  }
+  next();
+}, (req, res) => {
+  try {
+    const current = getBranding(db);
+    const values = { ...req.body };
+
+    if (!String(values.brand_name ?? current.brand_name).trim()) {
+      return res.status(400).json({ error: "El nombre de marca es requerido" });
+    }
+    if (!String(values.site_title ?? current.site_title).trim()) {
+      return res.status(400).json({ error: "El título del sitio es requerido" });
+    }
+
+    if (req.body?.removeLogo === "1" || req.body?.removeLogo === true || req.body?.removeLogo === 1) {
+      if (current.logo_url) removeUpload(current.logo_url);
+      values.logo_url = "";
+    }
+
+    if (req.files?.logo?.[0]) {
+      if (current.logo_url) removeUpload(current.logo_url);
+      values.logo_url = `/uploads/${req.files.logo[0].filename}`;
+    }
+
+    const branding = setBranding(db, values);
+    res.json({ ok: true, branding });
+  } catch (err) {
+    res.status(400).json({ error: err.message || "Error al guardar personalización" });
+  }
+});
+
 router.get("/products", authMiddleware, (req, res) => {
+  deactivateExpiredOffers(db);
   const products = db.prepare("SELECT * FROM products ORDER BY created_at DESC").all();
   res.json(products);
+});
+
+router.get("/offers", authMiddleware, (req, res) => {
+  deactivateExpiredOffers(db);
+  const products = db
+    .prepare(
+      "SELECT id, name, price, category, active, offer_active, offer_price, offer_label, offer_expires_at FROM products ORDER BY name"
+    )
+    .all();
+  const active = products.filter((p) => isOfferCurrentlyActive(p));
+  res.json({ products, active, activeCount: active.length });
+});
+
+router.post("/offers/apply", authMiddleware, (req, res) => {
+  try {
+    const { scope, discountType, discountValue, label, expiresAt, productIds } = req.body;
+    const result = applyBulkOffers(db, {
+      scope,
+      discountType,
+      discountValue,
+      label,
+      expiresAt,
+      productIds,
+    });
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    res.status(400).json({ error: err.message || "Error al aplicar ofertas" });
+  }
+});
+
+router.post("/offers/clear", authMiddleware, (req, res) => {
+  try {
+    const { scope, productIds } = req.body;
+    const result = clearOffers(db, { scope, productIds });
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    res.status(400).json({ error: err.message || "Error al quitar ofertas" });
+  }
 });
 
 router.get("/products/export", authMiddleware, (req, res) => {

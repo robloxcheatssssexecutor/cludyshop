@@ -6,16 +6,13 @@ const Stripe = require("stripe");
 const { db, generateOrderCode } = require("../db");
 const { uploadDir } = require("../paths");
 const { sendOrderConfirmation } = require("../services/email");
+const { deactivateExpiredOffers, getEffectivePrice } = require("../services/product-offers");
 
 const router = express.Router();
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
 
 function getBaseUrl(req) {
   return process.env.BASE_URL || `${req.protocol}://${req.get("host")}`;
-}
-
-function getEffectivePrice(product) {
-  return product.offer_active && product.offer_price != null ? product.offer_price : product.price;
 }
 
 function createOrderItems(orderId, cartItems) {
@@ -63,6 +60,7 @@ async function markOrderPaid(orderId) {
 
 router.post("/create", async (req, res) => {
   try {
+    deactivateExpiredOffers(db);
     const { customerName, customerEmail, paymentMethod, items } = req.body;
 
     if (!customerName?.trim() || !customerEmail?.trim() || !paymentMethod || !items?.length) {

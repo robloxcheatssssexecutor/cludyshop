@@ -1,4 +1,7 @@
 const express = require("express");
+const { db } = require("../db");
+const { getBranding } = require("../services/site-branding");
+
 const router = express.Router();
 
 router.get("/health", (req, res) => {
@@ -12,6 +15,7 @@ router.get("/config", (req, res) => {
     paypalEmail: process.env.PAYPAL_EMAIL || "",
     discordUrl: process.env.DISCORD_URL || "https://discord.gg/WPrr4kFWyn",
     baseUrl: process.env.BASE_URL || `${req.protocol}://${req.get("host")}`,
+    branding: getBranding(db),
   });
 });
 

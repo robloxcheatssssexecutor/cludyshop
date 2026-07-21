@@ -44,8 +44,10 @@
       <nav class="admin-nav">
         <button type="button" class="admin-nav-btn active" data-tab="dashboard">Dashboard</button>
         <button type="button" class="admin-nav-btn" data-tab="products">Products</button>
+        <button type="button" class="admin-nav-btn" data-tab="offers">Ofertas</button>
         <button type="button" class="admin-nav-btn" data-tab="orders">Orders</button>
         <button type="button" class="admin-nav-btn" data-tab="reviews">Reviews</button>
+        <button type="button" class="admin-nav-btn" data-tab="branding">Personalización</button>
       </nav>
       <div class="admin-sidebar-footer">
         <span id="adminUserLabel"></span>
@@ -99,6 +101,90 @@
         </div>
       </section>
 
+      <!-- Ofertas -->
+      <section id="tab-offers" class="admin-tab">
+        <h2 class="admin-title">Ofertas</h2>
+        <p class="admin-hint">Aplica descuentos a todos los productos o solo a los seleccionados. Las ofertas expiran automaticamente en la fecha indicada.</p>
+
+        <div class="admin-offers-layout">
+          <div class="admin-offers-card">
+            <h3 class="admin-offers-heading">Nueva oferta</h3>
+            <form id="offerForm">
+              <fieldset class="admin-fieldset">
+                <legend>Aplicar a</legend>
+                <label class="admin-check">
+                  <input type="radio" name="offerScope" id="offerScopeAll" value="all" checked>
+                  <span>Todos los productos</span>
+                </label>
+                <label class="admin-check">
+                  <input type="radio" name="offerScope" id="offerScopeSelected" value="selected">
+                  <span>Productos seleccionados</span>
+                </label>
+              </fieldset>
+
+              <div id="offerProductPicker" class="admin-offer-picker hidden">
+                <div class="admin-offer-picker-toolbar">
+                  <button type="button" class="btn btn-sm btn-outline" id="offerSelectAllBtn">Seleccionar todos</button>
+                  <button type="button" class="btn btn-sm btn-outline" id="offerSelectNoneBtn">Quitar seleccion</button>
+                </div>
+                <div id="offerProductList" class="admin-offer-product-list"></div>
+              </div>
+
+              <div class="admin-form-grid">
+                <label class="admin-field">
+                  <span>Tipo de descuento</span>
+                  <select id="offerDiscountType">
+                    <option value="percent">Porcentaje (%)</option>
+                    <option value="fixed">Cantidad fija (€)</option>
+                  </select>
+                </label>
+                <label class="admin-field">
+                  <span id="offerDiscountValueLabel">Descuento (%)</span>
+                  <input type="number" id="offerDiscountValue" step="0.01" min="0.01" required placeholder="Ej. 20">
+                </label>
+                <label class="admin-field">
+                  <span>Etiqueta (opcional)</span>
+                  <input type="text" id="offerLabel" placeholder="Ej. -20% OFF">
+                </label>
+                <label class="admin-field">
+                  <span>Expira el *</span>
+                  <input type="datetime-local" id="offerExpiresAt" required>
+                </label>
+              </div>
+
+              <div class="admin-form-actions">
+                <button type="submit" class="btn btn-primary" id="applyOfferBtn">Aplicar oferta</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="admin-offers-card">
+            <div class="admin-tab-header">
+              <h3 class="admin-offers-heading">Ofertas activas</h3>
+              <div class="admin-actions">
+                <button type="button" class="btn btn-outline btn-sm" id="clearAllOffersBtn">Quitar todas</button>
+              </div>
+            </div>
+            <p class="admin-hint" id="offersCountLabel"></p>
+            <div class="admin-table-wrap">
+              <table class="admin-table" id="offersTable">
+                <thead>
+                  <tr>
+                    <th>Producto</th>
+                    <th>Precio</th>
+                    <th>Oferta</th>
+                    <th>Etiqueta</th>
+                    <th>Expira</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="offersBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- Orders -->
       <section id="tab-orders" class="admin-tab">
         <h2 class="admin-title">Orders</h2>
@@ -149,6 +235,94 @@
             <tbody id="reviewsBody"></tbody>
           </table>
         </div>
+      </section>
+
+      <!-- Personalización -->
+      <section id="tab-branding" class="admin-tab">
+        <h2 class="admin-title">Personalización</h2>
+        <p class="admin-hint">Cambia el logo y los textos principales de la tienda. Los cambios se aplican al instante en la web pública.</p>
+
+        <form id="brandingForm" class="admin-branding-form">
+          <div class="admin-branding-layout">
+            <div class="admin-offers-card">
+              <h3 class="admin-offers-heading">Logo y marca</h3>
+
+              <div class="admin-branding-logo-preview" id="brandingLogoPreview">
+                <img id="brandingLogoPreviewImg" alt="Vista previa del logo" class="hidden">
+                <span class="logo-icon" id="brandingLogoPreviewLetter">C</span>
+              </div>
+
+              <label class="admin-field">
+                <span>Imagen del logo (opcional)</span>
+                <input type="file" id="brandingLogoFile" accept="image/*">
+                <small class="admin-hint">PNG, JPG o WebP. Si no subes imagen, se usará la letra del icono.</small>
+              </label>
+
+              <label class="admin-check">
+                <input type="checkbox" id="brandingRemoveLogo">
+                <span>Quitar logo actual y volver al icono con letra</span>
+              </label>
+
+              <div class="admin-form-grid">
+                <label class="admin-field">
+                  <span>Letra del icono</span>
+                  <input type="text" id="brandingLogoLetter" maxlength="2" placeholder="C">
+                </label>
+                <label class="admin-field">
+                  <span>Nombre de marca</span>
+                  <input type="text" id="brandingBrandName" required placeholder="Cludy">
+                </label>
+                <label class="admin-field">
+                  <span>Acento (color azul)</span>
+                  <input type="text" id="brandingBrandAccent" placeholder="Shop">
+                </label>
+                <label class="admin-field full">
+                  <span>Título del sitio (pestaña del navegador)</span>
+                  <input type="text" id="brandingSiteTitle" required placeholder="Cludy Shop — Digital Products">
+                </label>
+              </div>
+            </div>
+
+            <div class="admin-offers-card">
+              <h3 class="admin-offers-heading">Textos de la página principal</h3>
+
+              <div class="admin-form-grid">
+                <label class="admin-field full">
+                  <span>Etiqueta del hero</span>
+                  <input type="text" id="brandingHeroBadge" placeholder="Instant digital delivery">
+                </label>
+                <label class="admin-field">
+                  <span>Título principal</span>
+                  <input type="text" id="brandingHeroTitle" placeholder="Your store for">
+                </label>
+                <label class="admin-field">
+                  <span>Texto destacado (gradiente)</span>
+                  <input type="text" id="brandingHeroHighlight" placeholder="digital products">
+                </label>
+                <label class="admin-field full">
+                  <span>Descripción del hero</span>
+                  <textarea id="brandingHeroDesc" rows="3"></textarea>
+                </label>
+                <label class="admin-field">
+                  <span>Título del catálogo</span>
+                  <input type="text" id="brandingProductsTitle" placeholder="Digital products">
+                </label>
+                <label class="admin-field">
+                  <span>Título "About us"</span>
+                  <input type="text" id="brandingAboutTitle" placeholder="Cludy Shop">
+                </label>
+                <label class="admin-field full">
+                  <span>Texto del footer</span>
+                  <input type="text" id="brandingFooterText" placeholder="Cludy Shop — Digital products with instant delivery.">
+                </label>
+              </div>
+
+              <div class="admin-form-actions">
+                <button type="submit" class="btn btn-primary" id="saveBrandingBtn">Guardar personalización</button>
+              </div>
+            </div>
+          </div>
+        </form>
       </section>
     </main>
   </div>

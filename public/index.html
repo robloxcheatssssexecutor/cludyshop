@@ -68,9 +68,9 @@
         <div class="hero-grid"></div>
       </div>
       <div class="container hero-content">
-        <span class="hero-badge">Instant digital delivery</span>
-        <h1 class="hero-title">Your store for<br><span class="gradient-text">digital products</span></h1>
-        <p class="hero-desc">Scripts, configs and packs in .txt and downloadable file formats. Pay with Stripe, Litecoin or PayPal and receive everything instantly.</p>
+        <span class="hero-badge" data-branding="hero-badge">Instant digital delivery</span>
+        <h1 class="hero-title" data-branding="hero-title">Your store for<br><span class="gradient-text">digital products</span></h1>
+        <p class="hero-desc" data-branding="hero-desc">Scripts, configs and packs in .txt and downloadable file formats. Pay with Stripe, Litecoin or PayPal and receive everything instantly.</p>
         <div class="hero-cta">
           <a href="#products" class="btn btn-primary">Browse products</a>
           <a href="/track.html" class="btn btn-outline">Track my order</a>
@@ -106,7 +106,7 @@
       <div class="container">
         <div class="section-header">
           <span class="section-tag">Catalog</span>
-          <h2 class="section-title">Digital products</h2>
+          <h2 class="section-title" data-branding="products-title">Digital products</h2>
           <p class="section-desc">Filter by category or use search to find what you need.</p>
         </div>
         <div class="products-filter">
@@ -125,7 +125,7 @@
         <div class="about-grid">
           <div class="about-content">
             <span class="section-tag">About us</span>
-            <h2 class="section-title" style="text-align:left;">Cludy Shop</h2>
+            <h2 class="section-title" style="text-align:left;" data-branding="about-title">Cludy Shop</h2>
             <p>We specialize in digital products: scripts, configurations and exclusive packs. Everything is delivered instantly after payment confirmation.</p>
             <p>Have questions, order issues or need personalized support? Join our Discord — we respond as soon as possible.</p>
             <a href="https://discord.gg/WPrr4kFWyn" class="discord-btn" id="discordBtn" target="_blank" rel="noopener">
@@ -176,7 +176,7 @@
     <div class="container footer-inner">
       <div class="footer-brand">
         <span class="logo-icon" style="width:32px;height:32px;font-size:1rem;">C</span>
-        <p>Cludy Shop — Digital products with instant delivery.</p>
+        <p data-branding="footer-text">Cludy Shop — Digital products with instant delivery.</p>
       </div>
       <div class="footer-links">
         <a href="#products">Products</a>
@@ -314,6 +314,7 @@
   </div>
 
   <div class="toast" id="toast"></div>
+  <script src="/js/branding.js"></script>
   <script src="/js/auth-header.js"></script>
   <script src="/js/app.js"></script>
 </body>

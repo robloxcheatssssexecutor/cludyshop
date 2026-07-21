@@ -2,6 +2,7 @@ const initSqlJs = require("sql.js");
 const path = require("path");
 const fs = require("fs");
 const { dbPath } = require("./paths");
+const { ensureDefaultSettings } = require("./services/site-branding");
 
 const dir = path.dirname(dbPath);
 
@@ -193,6 +194,9 @@ async function initDb() {
   if (!productColumns.includes("delivery_text")) {
     db.exec("ALTER TABLE products ADD COLUMN delivery_text TEXT DEFAULT ''");
   }
+  if (!productColumns.includes("offer_expires_at")) {
+    db.exec("ALTER TABLE products ADD COLUMN offer_expires_at TEXT");
+  }
 
   const reviewColumns = db.prepare("PRAGMA table_info(reviews)").all().map((col) => col.name);
   if (!reviewColumns.includes("source")) {
@@ -201,6 +205,8 @@ async function initDb() {
   if (!reviewColumns.includes("source_id")) {
     db.exec("ALTER TABLE reviews ADD COLUMN source_id TEXT");
   }
+
+  ensureDefaultSettings(db);
 
   const reviewCount = db.prepare("SELECT COUNT(*) as c FROM reviews").get().c;
   if (reviewCount === 0) {

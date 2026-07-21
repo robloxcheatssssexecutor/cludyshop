@@ -1,9 +1,15 @@
 const express = require("express");
 const { db } = require("../db");
+const {
+  deactivateExpiredOffers,
+  getEffectivePrice,
+  isOfferCurrentlyActive,
+} = require("../services/product-offers");
 
 const router = express.Router();
 
 function formatProduct(p) {
+  const offerActive = isOfferCurrentlyActive(p);
   return {
     id: p.id,
     name: p.name,
@@ -15,16 +21,17 @@ function formatProduct(p) {
     showStock: !!p.show_stock,
     purchaseCount: p.purchase_count,
     showPurchases: !!p.show_purchases,
-    offerPrice: p.offer_price,
-    offerActive: !!p.offer_active,
-    offerLabel: p.offer_label || "",
-    effectivePrice: p.offer_active && p.offer_price != null ? p.offer_price : p.price,
+    offerPrice: offerActive ? p.offer_price : null,
+    offerActive,
+    offerLabel: offerActive ? p.offer_label || "" : "",
+    effectivePrice: getEffectivePrice(p),
     inStock: p.stock === -1 || p.stock > 0,
-    badge: p.offer_active && p.offer_label ? p.offer_label : null,
+    badge: offerActive && p.offer_label ? p.offer_label : null,
   };
 }
 
 router.get("/", (req, res) => {
+  deactivateExpiredOffers(db);
   const { category, search } = req.query;
   let sql = "SELECT * FROM products WHERE active = 1";
   const params = [];
@@ -46,6 +53,7 @@ router.get("/", (req, res) => {
 });
 
 router.get("/:id", (req, res) => {
+  deactivateExpiredOffers(db);
   const p = db.prepare("SELECT * FROM products WHERE id = ? AND active = 1").get(req.params.id);
   if (!p) return res.status(404).json({ error: "Producto no encontrado" });
   res.json(formatProduct(p));

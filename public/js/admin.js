@@ -5,8 +5,11 @@
   const $$ = (sel) => document.querySelectorAll(sel);
 
   let products = [];
+  let offerProducts = [];
   let editingId = null;
   let imagePreviewUrl = null;
+  let brandingLogoPreviewUrl = null;
+  let currentBranding = null;
 
   function showToast(msg, type = "success") {
     const toast = $("#toast");
@@ -59,8 +62,10 @@
     $$(".admin-tab").forEach((t) => t.classList.toggle("active", t.id === `tab-${tab}`));
     if (tab === "dashboard") loadStats();
     if (tab === "products") loadProducts();
+    if (tab === "offers") loadOffers();
     if (tab === "orders") loadOrders();
     if (tab === "reviews") loadReviews();
+    if (tab === "branding") loadBranding();
   }
 
   async function loadStats() {
@@ -83,6 +88,177 @@
     if (p.show_purchases) badges.push('<span class="admin-badge green">Sales visible</span>');
     if (p.offer_active) badges.push('<span class="admin-badge gold">Offer</span>');
     return badges.join(" ") || '<span class="admin-muted">—</span>';
+  }
+
+  function formatDateTime(value) {
+    if (!value) return "—";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "—";
+    return date.toLocaleString("es-ES");
+  }
+
+  function toDatetimeLocalValue(date) {
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  }
+
+  function defaultOfferExpiry() {
+    const date = new Date();
+    date.setDate(date.getDate() + 7);
+    date.setSeconds(0, 0);
+    return toDatetimeLocalValue(date);
+  }
+
+  function updateOfferScopeUI() {
+    const selected = $("#offerScopeSelected").checked;
+    $("#offerProductPicker").classList.toggle("hidden", !selected);
+  }
+
+  function updateOfferDiscountLabel() {
+    const isFixed = $("#offerDiscountType").value === "fixed";
+    $("#offerDiscountValueLabel").textContent = isFixed ? "Descuento (€)" : "Descuento (%)";
+    $("#offerDiscountValue").placeholder = isFixed ? "Ej. 5.00" : "Ej. 20";
+    $("#offerDiscountValue").step = isFixed ? "0.01" : "1";
+    $("#offerDiscountValue").max = isFixed ? "" : "100";
+  }
+
+  function renderOfferProductPicker() {
+    const list = $("#offerProductList");
+    if (!offerProducts.length) {
+      list.innerHTML = '<p class="admin-muted">No hay productos</p>';
+      return;
+    }
+
+    list.innerHTML = offerProducts
+      .map(
+        (p) => `
+      <label class="admin-check">
+        <input type="checkbox" class="offer-product-check" value="${p.id}">
+        <span>${escapeHtml(p.name)} <small class="admin-muted">(${formatPrice(p.price)})</small></span>
+      </label>`
+      )
+      .join("");
+  }
+
+  function getSelectedOfferProductIds() {
+    return [...document.querySelectorAll(".offer-product-check:checked")].map((el) => Number(el.value));
+  }
+
+  async function loadOffers() {
+    const data = await api("/api/admin/offers");
+    offerProducts = data.products || [];
+    renderOfferProductPicker();
+
+    const countLabel = $("#offersCountLabel");
+    if (countLabel) {
+      countLabel.textContent = `${data.activeCount || 0} producto(s) con oferta activa de ${offerProducts.length} en total`;
+    }
+
+    const tbody = $("#offersBody");
+    const active = data.active || [];
+    if (!active.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="admin-empty">No hay ofertas activas</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = active
+      .map(
+        (p) => `
+      <tr>
+        <td><strong>${escapeHtml(p.name)}</strong></td>
+        <td><s class="admin-muted">${formatPrice(p.price)}</s></td>
+        <td>${formatPrice(p.offer_price)}</td>
+        <td>${p.offer_label ? `<span class="admin-badge gold">${escapeHtml(p.offer_label)}</span>` : '<span class="admin-muted">—</span>'}</td>
+        <td><small>${formatDateTime(p.offer_expires_at)}</small></td>
+        <td class="admin-actions">
+          <button type="button" class="btn btn-sm btn-outline" data-clear-offer="${p.id}">Quitar</button>
+        </td>
+      </tr>`
+      )
+      .join("");
+
+    tbody.querySelectorAll("[data-clear-offer]").forEach((btn) => {
+      btn.addEventListener("click", () => clearOffers("selected", [Number(btn.dataset.clearOffer)]));
+    });
+  }
+
+  async function applyOffer(e) {
+    e.preventDefault();
+
+    const scope = $("#offerScopeSelected").checked ? "selected" : "all";
+    const productIds = scope === "selected" ? getSelectedOfferProductIds() : [];
+    const discountType = $("#offerDiscountType").value;
+    const discountValue = Number($("#offerDiscountValue").value);
+    const label = $("#offerLabel").value.trim();
+    const expiresAt = $("#offerExpiresAt").value;
+
+    if (!Number.isFinite(discountValue) || discountValue <= 0) {
+      showToast("Indica un descuento valido", "warning");
+      return;
+    }
+    if (discountType === "percent" && discountValue > 100) {
+      showToast("El porcentaje no puede superar 100", "warning");
+      return;
+    }
+    if (!expiresAt) {
+      showToast("Indica cuando expira la oferta", "warning");
+      return;
+    }
+    if (scope === "selected" && !productIds.length) {
+      showToast("Selecciona al menos un producto", "warning");
+      return;
+    }
+
+    const btn = $("#applyOfferBtn");
+    btn.disabled = true;
+    btn.textContent = "Aplicando...";
+
+    try {
+      const data = await api("/api/admin/offers/apply", {
+        method: "POST",
+        body: JSON.stringify({
+          scope,
+          discountType,
+          discountValue,
+          label,
+          expiresAt,
+          productIds,
+        }),
+      });
+
+      let msg = `Oferta aplicada a ${data.updated} producto(s)`;
+      if (data.skipped) msg += ` (${data.skipped} omitidos)`;
+      showToast(msg);
+      if (data.errors?.length) showToast(data.errors[0], "warning");
+
+      await loadOffers();
+      if (products.length) await loadProducts();
+    } catch (err) {
+      showToast(err.message, "warning");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Aplicar oferta";
+    }
+  }
+
+  async function clearOffers(scope, productIds = []) {
+    const message =
+      scope === "all"
+        ? "Quitar todas las ofertas activas de la tienda?"
+        : "Quitar la oferta de los productos seleccionados?";
+    if (!confirm(message)) return;
+
+    try {
+      const data = await api("/api/admin/offers/clear", {
+        method: "POST",
+        body: JSON.stringify({ scope, productIds }),
+      });
+      showToast(`Ofertas eliminadas: ${data.cleared}`);
+      await loadOffers();
+      if (products.length) await loadProducts();
+    } catch (err) {
+      showToast(err.message, "warning");
+    }
   }
 
   async function loadProducts() {
@@ -522,6 +698,83 @@
     }
   }
 
+  async function loadBranding() {
+    currentBranding = await api("/api/admin/branding");
+
+    $("#brandingLogoLetter").value = currentBranding.logo_letter || "C";
+    $("#brandingBrandName").value = currentBranding.brand_name || "";
+    $("#brandingBrandAccent").value = currentBranding.brand_accent || "";
+    $("#brandingSiteTitle").value = currentBranding.site_title || "";
+    $("#brandingHeroBadge").value = currentBranding.hero_badge || "";
+    $("#brandingHeroTitle").value = currentBranding.hero_title || "";
+    $("#brandingHeroHighlight").value = currentBranding.hero_highlight || "";
+    $("#brandingHeroDesc").value = currentBranding.hero_desc || "";
+    $("#brandingProductsTitle").value = currentBranding.products_title || "";
+    $("#brandingAboutTitle").value = currentBranding.about_title || "";
+    $("#brandingFooterText").value = currentBranding.footer_text || "";
+    $("#brandingRemoveLogo").checked = false;
+    $("#brandingLogoFile").value = "";
+
+    updateBrandingLogoPreview(currentBranding.logo_url || null);
+    $("#brandingLogoPreviewLetter").textContent = (currentBranding.logo_letter || "C").slice(0, 2);
+  }
+
+  function updateBrandingLogoPreview(url) {
+    const img = $("#brandingLogoPreviewImg");
+    const letter = $("#brandingLogoPreviewLetter");
+
+    if (brandingLogoPreviewUrl) {
+      URL.revokeObjectURL(brandingLogoPreviewUrl);
+      brandingLogoPreviewUrl = null;
+    }
+
+    if (url) {
+      img.src = url;
+      img.classList.remove("hidden");
+      letter.classList.add("hidden");
+      return;
+    }
+
+    img.removeAttribute("src");
+    img.classList.add("hidden");
+    letter.classList.remove("hidden");
+  }
+
+  async function saveBranding(e) {
+    e.preventDefault();
+
+    const formData = new FormData();
+    formData.append("logo_letter", $("#brandingLogoLetter").value.trim().slice(0, 2) || "C");
+    formData.append("brand_name", $("#brandingBrandName").value.trim());
+    formData.append("brand_accent", $("#brandingBrandAccent").value.trim());
+    formData.append("site_title", $("#brandingSiteTitle").value.trim());
+    formData.append("hero_badge", $("#brandingHeroBadge").value.trim());
+    formData.append("hero_title", $("#brandingHeroTitle").value.trim());
+    formData.append("hero_highlight", $("#brandingHeroHighlight").value.trim());
+    formData.append("hero_desc", $("#brandingHeroDesc").value.trim());
+    formData.append("products_title", $("#brandingProductsTitle").value.trim());
+    formData.append("about_title", $("#brandingAboutTitle").value.trim());
+    formData.append("footer_text", $("#brandingFooterText").value.trim());
+
+    const logoFile = $("#brandingLogoFile").files[0];
+    if (logoFile) formData.append("logo", logoFile);
+    if ($("#brandingRemoveLogo").checked) formData.append("removeLogo", "1");
+
+    try {
+      const data = await api("/api/admin/branding", {
+        method: "PUT",
+        body: formData,
+      });
+      currentBranding = data.branding;
+      updateBrandingLogoPreview(currentBranding.logo_url || null);
+      $("#brandingLogoFile").value = "";
+      $("#brandingRemoveLogo").checked = false;
+      showToast("Personalización guardada");
+    } catch (err) {
+      showToast(err.message, "warning");
+    }
+  }
+
   async function loadReviews() {
     const reviews = await api("/api/admin/reviews");
     const tbody = $("#reviewsBody");
@@ -625,6 +878,49 @@
     $("#importDiscordFile").addEventListener("change", (e) => {
       const file = e.target.files[0];
       if (file) importDiscordVouches(file);
+    });
+
+    $("#offerScopeAll").addEventListener("change", updateOfferScopeUI);
+    $("#offerScopeSelected").addEventListener("change", updateOfferScopeUI);
+    $("#offerDiscountType").addEventListener("change", updateOfferDiscountLabel);
+    $("#offerForm").addEventListener("submit", applyOffer);
+    $("#clearAllOffersBtn").addEventListener("click", () => clearOffers("all"));
+    $("#offerSelectAllBtn").addEventListener("click", () => {
+      document.querySelectorAll(".offer-product-check").forEach((el) => {
+        el.checked = true;
+      });
+    });
+    $("#offerSelectNoneBtn").addEventListener("click", () => {
+      document.querySelectorAll(".offer-product-check").forEach((el) => {
+        el.checked = false;
+      });
+    });
+    $("#offerExpiresAt").value = defaultOfferExpiry();
+    updateOfferDiscountLabel();
+    updateOfferScopeUI();
+
+    $("#brandingForm").addEventListener("submit", saveBranding);
+    $("#brandingLogoLetter").addEventListener("input", (e) => {
+      $("#brandingLogoPreviewLetter").textContent = e.target.value.trim().slice(0, 2) || "C";
+    });
+    $("#brandingLogoFile").addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (!file) {
+        updateBrandingLogoPreview(currentBranding?.logo_url || null);
+        return;
+      }
+      if (brandingLogoPreviewUrl) URL.revokeObjectURL(brandingLogoPreviewUrl);
+      brandingLogoPreviewUrl = URL.createObjectURL(file);
+      updateBrandingLogoPreview(brandingLogoPreviewUrl);
+      $("#brandingRemoveLogo").checked = false;
+    });
+    $("#brandingRemoveLogo").addEventListener("change", (e) => {
+      if (e.target.checked) {
+        updateBrandingLogoPreview(null);
+        $("#brandingLogoFile").value = "";
+      } else {
+        updateBrandingLogoPreview(currentBranding?.logo_url || null);
+      }
     });
 
     try {
