@@ -1950,6 +1950,10 @@ body {
   margin: -12px 0 20px;
 }
 
+.admin-import-option {
+  margin: -8px 0 20px;
+}
+
 .admin-file-btn {
   cursor: pointer;
   margin: 0;

@@ -64,8 +64,22 @@
       <section id="tab-products" class="admin-tab">
         <div class="admin-tab-header">
           <h2 class="admin-title">Products</h2>
-          <button type="button" class="btn btn-primary" id="newProductBtn">+ New product</button>
+          <div class="admin-actions">
+            <button type="button" class="btn btn-outline" id="exportProductsBtn">Export catalog</button>
+            <label class="btn btn-outline admin-file-btn">
+              Import catalog
+              <input type="file" id="importProductsFile" accept=".json,.zip,application/json,application/zip" hidden>
+            </label>
+            <button type="button" class="btn btn-primary" id="newProductBtn">+ New product</button>
+          </div>
         </div>
+        <p class="admin-hint" id="productsImportHint">
+          Export downloads a ZIP folder with products.json plus product images and delivery files. Import accepts that ZIP or a JSON-only file.
+        </p>
+        <label class="admin-check admin-import-option">
+          <input type="checkbox" id="importProductsUpdate">
+          <span>Update existing products with the same name on import</span>
+        </label>
         <div class="admin-table-wrap">
           <table class="admin-table" id="productsTable">
             <thead>

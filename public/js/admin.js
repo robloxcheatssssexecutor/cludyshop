@@ -373,6 +373,67 @@
     }
   }
 
+  async function exportProductsCatalog() {
+    const btn = $("#exportProductsBtn");
+    btn.disabled = true;
+    btn.textContent = "Exporting...";
+
+    try {
+      const res = await fetch("/api/admin/products/export", { credentials: "include" });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Export failed");
+      }
+
+      const blob = await res.blob();
+      const cd = res.headers.get("Content-Disposition") || "";
+      const match = cd.match(/filename="([^"]+)"/);
+      const fallback = `products-export-${new Date().toISOString().slice(0, 10)}.zip`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = match?.[1] || fallback;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      showToast("Product catalog exported (ZIP with JSON and files)");
+    } catch (err) {
+      showToast(err.message, "warning");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Export catalog";
+    }
+  }
+
+  async function importProductsCatalog(file) {
+    if (!file) return;
+
+    const updateExisting = $("#importProductsUpdate")?.checked;
+
+    try {
+      const formData = new FormData();
+      formData.append("productsFile", file);
+      formData.append("updateExisting", updateExisting ? "1" : "0");
+
+      const data = await api("/api/admin/products/import", { method: "POST", body: formData });
+
+      const parts = [`${data.imported} new`, `${data.skipped} skipped`];
+      if (data.updated) parts.push(`${data.updated} updated`);
+      if (data.filesCopied) parts.push(`${data.filesCopied} files copied`);
+      showToast(`${parts.join(", ")}. Total in store: ${data.total}`);
+      if (data.errors?.length) {
+        showToast(data.errors[0], "warning");
+      }
+      await loadProducts();
+      loadStats();
+    } catch (err) {
+      showToast(err.message, "warning");
+    } finally {
+      $("#importProductsFile").value = "";
+    }
+  }
+
   const STATUS_MAP = {
     pending: { label: "Pending", cls: "gold" },
     pending_verification: { label: "Verifying", cls: "blue" },
@@ -536,6 +597,11 @@
     });
 
     $("#newProductBtn").addEventListener("click", () => openProductModal());
+    $("#exportProductsBtn").addEventListener("click", exportProductsCatalog);
+    $("#importProductsFile").addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (file) importProductsCatalog(file);
+    });
     $("#closeProductModal").addEventListener("click", closeProductModal);
     $("#cancelProductBtn").addEventListener("click", closeProductModal);
     $("#productImage").addEventListener("change", (e) => {

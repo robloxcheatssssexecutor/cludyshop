@@ -1,12 +1,22 @@
 const express = require("express");
 const path = require("path");
 const fs = require("fs");
+const os = require("os");
+const archiver = require("archiver");
+const extract = require("extract-zip");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const multer = require("multer");
 const { db } = require("../db");
 const { uploadDir, vouchesPath } = require("../paths");
 const { importVouches, loadVouchesFile } = require("../services/discord-vouches");
+const {
+  exportProducts,
+  importProducts,
+  collectProductUploadFiles,
+  loadPayloadFromExtractedImport,
+  copyImportUploads,
+} = require("../services/product-catalog");
 const { authMiddleware } = require("../middleware/auth");
 const { markOrderPaid } = require("./orders");
 
@@ -37,6 +47,17 @@ function optionalVouchesUpload(req, res, next) {
   const contentType = req.headers["content-type"] || "";
   if (contentType.includes("multipart/form-data")) {
     return upload.single("vouchesFile")(req, res, (err) => {
+      if (err) return res.status(400).json({ error: err.message || "Error al subir archivo" });
+      next();
+    });
+  }
+  next();
+}
+
+function optionalProductsUpload(req, res, next) {
+  const contentType = req.headers["content-type"] || "";
+  if (contentType.includes("multipart/form-data")) {
+    return upload.single("productsFile")(req, res, (err) => {
       if (err) return res.status(400).json({ error: err.message || "Error al subir archivo" });
       next();
     });
@@ -110,6 +131,77 @@ router.get("/stats", authMiddleware, (req, res) => {
 router.get("/products", authMiddleware, (req, res) => {
   const products = db.prepare("SELECT * FROM products ORDER BY created_at DESC").all();
   res.json(products);
+});
+
+router.get("/products/export", authMiddleware, (req, res) => {
+  const payload = exportProducts(db);
+  const stamp = new Date().toISOString().slice(0, 10);
+  const folderName = `products-export-${stamp}`;
+  const filename = `${folderName}.zip`;
+
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  res.type("application/zip");
+
+  const archive = archiver("zip", { zlib: { level: 9 } });
+  archive.on("error", (err) => {
+    if (!res.headersSent) res.status(500).json({ error: err.message || "Error al exportar productos" });
+    else res.end();
+  });
+  archive.pipe(res);
+
+  archive.append(JSON.stringify(payload, null, 2), { name: `${folderName}/products.json` });
+
+  for (const file of collectProductUploadFiles(payload.products, uploadDir)) {
+    archive.file(file.full, { name: `${folderName}/uploads/${file.rel}` });
+  }
+
+  archive.finalize();
+});
+
+router.post("/products/import", authMiddleware, optionalProductsUpload, async (req, res) => {
+  let extractDir = null;
+  try {
+    let payload;
+    let filesCopied = 0;
+
+    if (req.file) {
+      const lowerName = (req.file.originalname || "").toLowerCase();
+      const isZip =
+        lowerName.endsWith(".zip") ||
+        req.file.mimetype === "application/zip" ||
+        req.file.mimetype === "application/x-zip-compressed";
+
+      if (isZip) {
+        extractDir = fs.mkdtempSync(path.join(os.tmpdir(), "cludy-products-import-"));
+        await extract(req.file.path, { dir: extractDir });
+        const extracted = loadPayloadFromExtractedImport(extractDir);
+        payload = extracted.payload;
+        filesCopied = copyImportUploads(extracted.uploadsDir, uploadDir);
+      } else {
+        payload = JSON.parse(fs.readFileSync(req.file.path, "utf8"));
+      }
+      fs.unlinkSync(req.file.path);
+    } else if (req.body && (Array.isArray(req.body) || Array.isArray(req.body.products))) {
+      payload = req.body;
+    } else {
+      return res.status(400).json({ error: "Sube un archivo JSON, ZIP o envia un cuerpo JSON valido" });
+    }
+
+    const updateExisting =
+      req.body?.updateExisting === true ||
+      req.body?.updateExisting === "1" ||
+      req.body?.updateExisting === 1;
+
+    const result = importProducts(db, payload, { updateExisting });
+    res.json({ ok: true, ...result, filesCopied });
+  } catch (err) {
+    if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+    res.status(400).json({ error: err.message || "Error al importar productos" });
+  } finally {
+    if (extractDir && fs.existsSync(extractDir)) {
+      fs.rmSync(extractDir, { recursive: true, force: true });
+    }
+  }
 });
 
 router.post("/products", authMiddleware, productUpload, (req, res) => {
