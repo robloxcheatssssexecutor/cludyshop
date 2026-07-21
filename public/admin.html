@@ -129,11 +129,13 @@
   </div>
 
   <!-- Product modal -->
-  <div class="modal" id="productModal">
-    <div class="modal-content admin-modal-content">
-      <button type="button" class="modal-close" id="closeProductModal">&times;</button>
-      <h3 id="productModalTitle">Nuevo producto</h3>
-      <form id="productForm" enctype="multipart/form-data">
+  <div class="modal-overlay" id="productModal">
+    <div class="modal admin-modal-content">
+      <div class="modal-header">
+        <h3 id="productModalTitle">Nuevo producto</h3>
+        <button type="button" class="modal-close" id="closeProductModal" aria-label="Cerrar">&times;</button>
+      </div>
+      <form id="productForm" class="modal-body" enctype="multipart/form-data">
         <input type="hidden" id="productId">
 
         <div class="admin-form-grid">
@@ -204,6 +206,9 @@
           <legend>Archivos</legend>
           <label class="admin-field">
             <span>Imagen del producto</span>
+            <div class="admin-image-preview hidden" id="productImagePreview">
+              <img id="productImagePreviewImg" alt="Vista previa del producto">
+            </div>
             <input type="file" id="productImage" accept="image/*">
             <small id="currentImageHint" class="admin-hint hidden"></small>
           </label>

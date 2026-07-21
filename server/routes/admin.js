@@ -22,6 +22,23 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage, limits: { fileSize: 50 * 1024 * 1024 } });
 
+function productUpload(req, res, next) {
+  const contentType = req.headers["content-type"] || "";
+  if (!contentType.includes("multipart/form-data")) return next();
+
+  upload.fields([{ name: "image", maxCount: 1 }, { name: "digitalFile", maxCount: 1 }])(req, res, (err) => {
+    if (err) return res.status(400).json({ error: err.message || "Error al subir archivo" });
+    next();
+  });
+}
+
+function removeUpload(relativePath) {
+  if (!relativePath) return;
+  const filename = relativePath.startsWith("/uploads/") ? relativePath.slice("/uploads/".length) : path.basename(relativePath);
+  const fullPath = path.join(uploadDir, filename);
+  if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
+}
+
 router.post("/login", (req, res) => {
   const { username, password } = req.body;
   if (username !== process.env.ADMIN_USER || password !== process.env.ADMIN_PASSWORD) {
@@ -61,11 +78,13 @@ router.get("/products", authMiddleware, (req, res) => {
   res.json(products);
 });
 
-router.post("/products", authMiddleware, upload.fields([{ name: "image" }, { name: "digitalFile" }]), (req, res) => {
+router.post("/products", authMiddleware, productUpload, (req, res) => {
   const { name, description, price, category, stock, showStock, showPurchases, offerActive, offerPrice, offerLabel } =
     req.body;
 
-  if (!name?.trim() || !price) return res.status(400).json({ error: "Nombre y precio requeridos" });
+  if (!name?.trim() || price === undefined || price === "") {
+    return res.status(400).json({ error: "Nombre y precio requeridos" });
+  }
 
   const imageUrl = req.files?.image?.[0] ? `/uploads/${req.files.image[0].filename}` : "";
   const digitalFile = req.files?.digitalFile?.[0]?.filename || "";
@@ -83,10 +102,10 @@ router.post("/products", authMiddleware, upload.fields([{ name: "image" }, { nam
       category || "digital",
       imageUrl,
       stock !== undefined && stock !== "" ? Number(stock) : -1,
-      showStock === "1" || showStock === true ? 1 : 0,
-      showPurchases !== "0" && showPurchases !== false ? 1 : 0,
-      offerActive === "1" || offerActive === true ? 1 : 0,
-      offerPrice ? Number(offerPrice) : null,
+      showStock === "1" || showStock === true || showStock === 1 ? 1 : 0,
+      showPurchases !== "0" && showPurchases !== false && showPurchases !== 0 ? 1 : 0,
+      offerActive === "1" || offerActive === true || offerActive === 1 ? 1 : 0,
+      offerPrice !== undefined && offerPrice !== "" ? Number(offerPrice) : null,
       offerLabel || "",
       digitalFile
     );
@@ -94,7 +113,7 @@ router.post("/products", authMiddleware, upload.fields([{ name: "image" }, { nam
   res.json({ id: result.lastInsertRowid });
 });
 
-router.put("/products/:id", authMiddleware, upload.fields([{ name: "image" }, { name: "digitalFile" }]), (req, res) => {
+function updateProduct(req, res) {
   const product = db.prepare("SELECT * FROM products WHERE id = ?").get(req.params.id);
   if (!product) return res.status(404).json({ error: "No encontrado" });
 
@@ -113,24 +132,30 @@ router.put("/products/:id", authMiddleware, upload.fields([{ name: "image" }, { 
   ).run(
     name?.trim() || product.name,
     description?.trim() ?? product.description,
-    price !== undefined ? Number(price) : product.price,
+    price !== undefined && price !== "" ? Number(price) : product.price,
     category || product.category,
     imageUrl,
     stock !== undefined && stock !== "" ? Number(stock) : product.stock,
-    showStock === "1" || showStock === true ? 1 : showStock === "0" || showStock === false ? 0 : product.show_stock,
-    showPurchases === "1" || showPurchases === true ? 1 : showPurchases === "0" || showPurchases === false ? 0 : product.show_purchases,
-    offerActive === "1" || offerActive === true ? 1 : offerActive === "0" || offerActive === false ? 0 : product.offer_active,
+    showStock === "1" || showStock === true || showStock === 1 ? 1 : showStock === "0" || showStock === false || showStock === 0 ? 0 : product.show_stock,
+    showPurchases === "1" || showPurchases === true || showPurchases === 1 ? 1 : showPurchases === "0" || showPurchases === false || showPurchases === 0 ? 0 : product.show_purchases,
+    offerActive === "1" || offerActive === true || offerActive === 1 ? 1 : offerActive === "0" || offerActive === false || offerActive === 0 ? 0 : product.offer_active,
     offerPrice !== undefined && offerPrice !== "" ? Number(offerPrice) : product.offer_price,
     offerLabel ?? product.offer_label,
     digitalFile,
-    active !== undefined ? (active === "1" || active === true ? 1 : 0) : product.active,
+    active !== undefined ? (active === "1" || active === true || active === 1 ? 1 : 0) : product.active,
     req.params.id
   );
 
   res.json({ ok: true });
-});
+}
+
+router.put("/products/:id", authMiddleware, productUpload, updateProduct);
+router.post("/products/:id", authMiddleware, productUpload, updateProduct);
 
 router.delete("/products/:id", authMiddleware, (req, res) => {
+  const product = db.prepare("SELECT * FROM products WHERE id = ?").get(req.params.id);
+  if (!product) return res.status(404).json({ error: "No encontrado" });
+
   db.prepare("UPDATE products SET active = 0 WHERE id = ?").run(req.params.id);
   res.json({ ok: true });
 });

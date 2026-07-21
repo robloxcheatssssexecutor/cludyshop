@@ -74,12 +74,11 @@
     products = await api(`/api/products?${params}`);
     $("#statProducts").textContent = products.length + "+";
     renderProducts();
-    renderTechniques();
   }
 
   function productImage(p) {
-    if (p.imageUrl) return `<img src="${p.imageUrl}" alt="${escapeHtml(p.name)}" style="width:100%;height:100%;object-fit:cover;">`;
-    const emojis = { packs: "📦", scripts: "📜", guides: "📖", configs: "⚙️", templates: "📋", techniques: "🎯", digital: "💾" };
+    if (p.imageUrl) return `<img src="${p.imageUrl}" alt="${escapeHtml(p.name)}" loading="lazy">`;
+    const emojis = { packs: "📦", scripts: "📜", guides: "📖", configs: "⚙️", templates: "📋", digital: "💾" };
     return emojis[p.category] || "💾";
   }
 
@@ -96,7 +95,7 @@
 
     return `
       <article class="product-card" style="animation-delay:${i * 0.06}s" data-id="${p.id}">
-        <div class="product-image">
+        <div class="product-image${p.imageUrl ? " has-photo" : ""}">
           ${p.badge ? `<span class="product-badge">${escapeHtml(p.badge)}</span>` : ""}
           ${productImage(p)}
         </div>
@@ -124,25 +123,6 @@
     empty.classList.add("hidden");
     grid.innerHTML = products.map((p, i) => renderProductCard(p, i)).join("");
     bindAddToCart(grid);
-  }
-
-  function renderTechniques() {
-    const grid = $("#techniquesGrid");
-    if (!grid) return;
-    const techniques = products.filter((p) => p.category === "techniques");
-    if (!techniques.length) {
-      grid.innerHTML = '<p style="text-align:center;color:var(--gray-500);grid-column:1/-1;">Cargando técnicas...</p>';
-      api("/api/products?category=techniques").then((data) => {
-        grid.innerHTML = data.map((p, i) => renderProductCard(p, i)).join("");
-        bindAddToCart(grid);
-      });
-      return;
-    }
-    const techOnly = techniques.length ? techniques : [];
-    api("/api/products?category=techniques").then((data) => {
-      grid.innerHTML = data.map((p, i) => renderProductCard(p, i)).join("");
-      bindAddToCart(grid);
-    });
   }
 
   function bindAddToCart(container) {

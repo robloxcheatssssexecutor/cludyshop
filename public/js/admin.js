@@ -6,6 +6,7 @@
 
   let products = [];
   let editingId = null;
+  let imagePreviewUrl = null;
 
   function showToast(msg, type = "success") {
     const toast = $("#toast");
@@ -112,7 +113,7 @@
         <td>${p.active ? '<span class="admin-badge green">Activo</span>' : '<span class="admin-badge red">Oculto</span>'}</td>
         <td class="admin-actions">
           <button type="button" class="btn btn-sm btn-outline" data-edit="${p.id}">Editar</button>
-          <button type="button" class="btn btn-sm btn-danger" data-delete="${p.id}">Eliminar</button>
+          <button type="button" class="btn btn-sm btn-danger" data-delete="${p.id}">Ocultar</button>
         </td>
       </tr>`
       )
@@ -126,10 +127,69 @@
     });
   }
 
+  function productIdMatch(a, b) {
+    return Number(a) === Number(b);
+  }
+
+  function readProductForm() {
+    return {
+      name: $("#productName").value.trim(),
+      description: $("#productDesc").value.trim(),
+      price: $("#productPrice").value,
+      category: $("#productCategory").value,
+      stock: $("#productStock").value,
+      showStock: $("#productShowStock").checked,
+      showPurchases: $("#productShowPurchases").checked,
+      offerActive: $("#productOfferActive").checked,
+      offerPrice: $("#productOfferPrice").value,
+      offerLabel: $("#productOfferLabel").value.trim(),
+      active: $("#productActive").checked,
+    };
+  }
+
+  function buildProductFormData(data) {
+    const fd = new FormData();
+    fd.append("name", data.name);
+    fd.append("description", data.description);
+    fd.append("price", data.price);
+    fd.append("category", data.category);
+    fd.append("stock", data.stock);
+    fd.append("showStock", data.showStock ? "1" : "0");
+    fd.append("showPurchases", data.showPurchases ? "1" : "0");
+    fd.append("offerActive", data.offerActive ? "1" : "0");
+    fd.append("offerPrice", data.offerPrice);
+    fd.append("offerLabel", data.offerLabel);
+    if (editingId) fd.append("active", data.active ? "1" : "0");
+
+    const image = $("#productImage").files[0];
+    const digital = $("#productDigitalFile").files[0];
+    if (image) fd.append("image", image);
+    if (digital) fd.append("digitalFile", digital);
+    return fd;
+  }
+
+  function updateImagePreview(src) {
+    const preview = $("#productImagePreview");
+    const img = $("#productImagePreviewImg");
+    if (src) {
+      img.src = src;
+      preview.classList.remove("hidden");
+      return;
+    }
+
+    if (imagePreviewUrl) {
+      URL.revokeObjectURL(imagePreviewUrl);
+      imagePreviewUrl = null;
+    }
+    img.removeAttribute("src");
+    preview.classList.add("hidden");
+  }
+
   function openProductModal(id = null) {
     editingId = id;
     const form = $("#productForm");
     form.reset();
+    updateImagePreview(null);
     $("#productModalTitle").textContent = id ? "Editar producto" : "Nuevo producto";
     $("#productActiveWrap").classList.toggle("hidden", !id);
     $("#currentImageHint").classList.add("hidden");
@@ -137,8 +197,11 @@
     $("#productShowPurchases").checked = true;
 
     if (id) {
-      const p = products.find((x) => x.id === id);
-      if (!p) return;
+      const p = products.find((x) => productIdMatch(x.id, id));
+      if (!p) {
+        showToast("No se pudo cargar el producto", "warning");
+        return;
+      }
       $("#productId").value = p.id;
       $("#productName").value = p.name;
       $("#productDesc").value = p.description || "";
@@ -153,6 +216,7 @@
       $("#productOfferLabel").value = p.offer_label || "";
       $("#productActive").checked = !!p.active;
       if (p.image_url) {
+        updateImagePreview(p.image_url);
         $("#currentImageHint").textContent = `Actual: ${p.image_url}`;
         $("#currentImageHint").classList.remove("hidden");
       }
@@ -173,6 +237,7 @@
   function closeProductModal() {
     $("#productModal").classList.remove("active");
     document.body.style.overflow = "";
+    updateImagePreview(null);
     editingId = null;
   }
 
@@ -219,7 +284,7 @@
   }
 
   async function deleteProduct(id) {
-    const p = products.find((x) => x.id === id);
+    const p = products.find((x) => productIdMatch(x.id, id));
     if (!confirm(`¿Ocultar "${p?.name}" de la tienda?`)) return;
     try {
       await api(`/api/admin/products/${id}`, { method: "DELETE" });
@@ -362,6 +427,16 @@
     $("#newProductBtn").addEventListener("click", () => openProductModal());
     $("#closeProductModal").addEventListener("click", closeProductModal);
     $("#cancelProductBtn").addEventListener("click", closeProductModal);
+    $("#productImage").addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (!file) {
+        updateImagePreview(null);
+        return;
+      }
+      if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+      imagePreviewUrl = URL.createObjectURL(file);
+      updateImagePreview(imagePreviewUrl);
+    });
     $("#productForm").addEventListener("submit", saveProduct);
     $("#productModal").addEventListener("click", (e) => {
       if (e.target === $("#productModal")) closeProductModal();
