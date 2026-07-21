@@ -78,8 +78,13 @@
 
   function productImage(p) {
     if (p.imageUrl) return `<img src="${p.imageUrl}" alt="${escapeHtml(p.name)}" loading="lazy">`;
-    const emojis = { packs: "📦", scripts: "📜", guides: "📖", configs: "⚙️", templates: "📋", digital: "💾" };
+    const emojis = { tools: "🛠️", methods: "📘", variety: "✨", digital: "💾" };
     return emojis[p.category] || "💾";
+  }
+
+  function categoryLabel(category) {
+    const labels = { tools: "Tools", methods: "Methods", variety: "Variety", all: "All" };
+    return labels[category] || category.charAt(0).toUpperCase() + category.slice(1);
   }
 
   function renderProductCard(p, i) {
@@ -100,7 +105,7 @@
           ${productImage(p)}
         </div>
         <div class="product-info">
-          <span class="product-category">${p.category}</span>
+          <span class="product-category">${categoryLabel(p.category)}</span>
           <h3 class="product-name">${escapeHtml(p.name)}</h3>
           <p class="product-desc">${escapeHtml(p.description)}</p>
           ${meta ? `<div class="product-meta-row">${meta}</div>` : ""}

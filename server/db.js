@@ -142,19 +142,32 @@ async function initDb() {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const samples = [
-      ["Pack Premium Digital", "Colección de archivos .txt y recursos digitales exclusivos. Entrega instantánea.", 19.99, "packs", 50, 1, 127, 1, 0],
-      ["Script Pro v2", "Script avanzado en formato .txt listo para usar. Compatible y documentado.", 14.99, "scripts", -1, 0, 89, 1, 0],
-      ["Guía Completa Digital", "Manual digital descargable al instante en formato .txt/.pdf.", 9.99, "guides", 100, 1, 234, 1, 1],
-      ["Bundle Ultimate", "Todos los productos digitales en un solo pack con descuento incluido.", 49.99, "packs", 25, 1, 56, 1, 0],
-      ["Config Elite .txt", "Archivo de configuración optimizada premium. Descarga directa.", 7.99, "configs", -1, 0, 312, 1, 0],
-      ["Plantillas Pack", "Pack de plantillas editables en múltiples formatos digitales.", 12.99, "templates", 75, 1, 98, 1, 0],
-      ["Starter Digital Kit", "Kit inicial perfecto para empezar. Archivos listos para descargar.", 4.99, "packs", -1, 0, 501, 1, 0],
+      ["Pack Premium Digital", "Colección de archivos .txt y recursos digitales exclusivos. Entrega instantánea.", 19.99, "variety", 50, 1, 127, 1, 0],
+      ["Script Pro v2", "Script avanzado en formato .txt listo para usar. Compatible y documentado.", 14.99, "tools", -1, 0, 89, 1, 0],
+      ["Guía Completa Digital", "Manual digital descargable al instante en formato .txt/.pdf.", 9.99, "methods", 100, 1, 234, 1, 1],
+      ["Bundle Ultimate", "Todos los productos digitales en un solo pack con descuento incluido.", 49.99, "variety", 25, 1, 56, 1, 0],
+      ["Config Elite .txt", "Archivo de configuración optimizada premium. Descarga directa.", 7.99, "tools", -1, 0, 312, 1, 0],
+      ["Plantillas Pack", "Pack de plantillas editables en múltiples formatos digitales.", 12.99, "variety", 75, 1, 98, 1, 0],
+      ["Starter Digital Kit", "Kit inicial perfecto para empezar. Archivos listos para descargar.", 4.99, "variety", -1, 0, 501, 1, 0],
     ];
     for (const s of samples) insert.run(...s);
     db.prepare("UPDATE products SET offer_price = 6.99, offer_label = '-30% OFERTA' WHERE name = 'Guía Completa Digital'").run();
   }
 
   db.prepare("UPDATE products SET active = 0 WHERE category = 'techniques'").run();
+
+  const legacyCategoryMap = {
+    packs: "variety",
+    scripts: "tools",
+    guides: "methods",
+    configs: "tools",
+    templates: "variety",
+    digital: "variety",
+    techniques: "methods",
+  };
+  for (const [from, to] of Object.entries(legacyCategoryMap)) {
+    db.prepare("UPDATE products SET category = ? WHERE category = ?").run(to, from);
+  }
 
   const reviewCount = db.prepare("SELECT COUNT(*) as c FROM reviews").get().c;
   if (reviewCount === 0) {

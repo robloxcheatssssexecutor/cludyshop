@@ -206,7 +206,7 @@
       $("#productName").value = p.name;
       $("#productDesc").value = p.description || "";
       $("#productPrice").value = p.price;
-      $("#productCategory").value = p.category || "digital";
+      $("#productCategory").value = p.category || "variety";
       $("#productStock").value = p.stock;
       $("#productPurchases").value = p.purchase_count;
       $("#productShowStock").checked = !!p.show_stock;

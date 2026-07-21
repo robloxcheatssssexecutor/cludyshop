@@ -10,7 +10,7 @@ function req(method, urlPath, opts = {}) {
       const fields = opts.fields || {
         name: "Test Product",
         price: "9.99",
-        category: "packs",
+        category: "tools",
         stock: "-1",
         showStock: "0",
         showPurchases: "1",
@@ -61,7 +61,7 @@ function req(method, urlPath, opts = {}) {
       fields: {
         name: "Test Product Updated",
         price: "12.50",
-        category: "scripts",
+        category: "methods",
         stock: "5",
         showStock: "1",
         showPurchases: "1",

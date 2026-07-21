@@ -99,7 +99,7 @@ router.post("/products", authMiddleware, productUpload, (req, res) => {
       name.trim(),
       description?.trim() || "",
       Number(price),
-      category || "digital",
+      category || "variety",
       imageUrl,
       stock !== undefined && stock !== "" ? Number(stock) : -1,
       showStock === "1" || showStock === true || showStock === 1 ? 1 : 0,
