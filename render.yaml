@@ -12,15 +12,20 @@ services:
     buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /api/health
+    # Disco persistente (plan de pago en Render). Sin esto, los datos se pierden al reiniciar.
+    # disk:
+    #   name: cludy-data
+    #   mountPath: /var/data
+    #   sizeGB: 1
     envVars:
       - key: NODE_VERSION
         value: "20.18.0"
       - key: NODE_ENV
         value: production
       - key: DATABASE_PATH
-        value: ./data/cludy.db
+        value: data/cludy.db
       - key: UPLOAD_DIR
-        value: ./uploads
+        value: uploads
       - key: BASE_URL
         sync: false
       - key: JWT_SECRET

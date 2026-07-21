@@ -5,12 +5,13 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const multer = require("multer");
 const { db } = require("../db");
+const { uploadDir, vouchesPath } = require("../paths");
+const { importVouches, loadVouchesFile } = require("../services/discord-vouches");
 const { authMiddleware } = require("../middleware/auth");
 const { markOrderPaid } = require("./orders");
 
 const router = express.Router();
 
-const uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, "../../uploads");
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
 const storage = multer.diskStorage({
@@ -30,6 +31,17 @@ function productUpload(req, res, next) {
     if (err) return res.status(400).json({ error: err.message || "Error al subir archivo" });
     next();
   });
+}
+
+function optionalVouchesUpload(req, res, next) {
+  const contentType = req.headers["content-type"] || "";
+  if (contentType.includes("multipart/form-data")) {
+    return upload.single("vouchesFile")(req, res, (err) => {
+      if (err) return res.status(400).json({ error: err.message || "Error al subir archivo" });
+      next();
+    });
+  }
+  next();
 }
 
 function removeUpload(relativePath) {
@@ -160,6 +172,16 @@ router.delete("/products/:id", authMiddleware, (req, res) => {
   res.json({ ok: true });
 });
 
+router.delete("/products/:id/permanent", authMiddleware, (req, res) => {
+  const product = db.prepare("SELECT * FROM products WHERE id = ?").get(req.params.id);
+  if (!product) return res.status(404).json({ error: "No encontrado" });
+
+  removeUpload(product.image_url);
+  removeUpload(product.digital_file);
+  db.prepare("DELETE FROM products WHERE id = ?").run(req.params.id);
+  res.json({ ok: true });
+});
+
 router.get("/orders", authMiddleware, (req, res) => {
   const orders = db.prepare("SELECT * FROM orders ORDER BY created_at DESC LIMIT 100").all();
   res.json(orders);
@@ -186,6 +208,42 @@ router.put("/reviews/:id", authMiddleware, (req, res) => {
   const { approved } = req.body;
   db.prepare("UPDATE reviews SET approved = ? WHERE id = ?").run(approved ? 1 : 0, req.params.id);
   res.json({ ok: true });
+});
+
+router.post("/reviews/import-discord", authMiddleware, optionalVouchesUpload, (req, res) => {
+  try {
+    let vouchesData;
+    let savedPath = null;
+
+    if (req.file) {
+      vouchesData = JSON.parse(fs.readFileSync(req.file.path, "utf8"));
+      if (!fs.existsSync(path.dirname(vouchesPath))) {
+        fs.mkdirSync(path.dirname(vouchesPath), { recursive: true });
+      }
+      fs.copyFileSync(req.file.path, vouchesPath);
+      savedPath = vouchesPath;
+      fs.unlinkSync(req.file.path);
+    } else if (fs.existsSync(vouchesPath)) {
+      vouchesData = loadVouchesFile(vouchesPath);
+      savedPath = vouchesPath;
+    } else {
+      return res.status(404).json({
+        error: "No se encontro vouches.json. Sube el archivo o configura DISCORD_VOUCHES_PATH.",
+      });
+    }
+
+    const userId = req.body?.userId || process.env.DISCORD_VOUCH_USER_ID || null;
+    const result = importVouches(db, vouchesData, { userId });
+
+    if (result.error && result.imported === 0 && result.skipped === 0) {
+      return res.status(400).json({ error: result.error });
+    }
+
+    res.json({ ok: true, ...result, path: savedPath });
+  } catch (err) {
+    if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+    res.status(400).json({ error: err.message || "Error al importar vouches" });
+  }
 });
 
 module.exports = router;

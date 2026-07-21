@@ -4,6 +4,7 @@ const fs = require("fs");
 const { v4: uuidv4 } = require("uuid");
 const Stripe = require("stripe");
 const { db, generateOrderCode } = require("../db");
+const { uploadDir } = require("../paths");
 const { sendOrderConfirmation } = require("../services/email");
 
 const router = express.Router();
@@ -220,7 +221,6 @@ router.get("/download/:token", (req, res) => {
   }));
 
   if (files.length === 1) {
-    const uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, "../../uploads");
     const filePath = path.join(uploadDir, files[0].file);
     if (fs.existsSync(filePath)) {
       return res.download(filePath, files[0].file);

@@ -113,7 +113,8 @@
         <td>${p.active ? '<span class="admin-badge green">Activo</span>' : '<span class="admin-badge red">Oculto</span>'}</td>
         <td class="admin-actions">
           <button type="button" class="btn btn-sm btn-outline" data-edit="${p.id}">Editar</button>
-          <button type="button" class="btn btn-sm btn-danger" data-delete="${p.id}">Ocultar</button>
+          <button type="button" class="btn btn-sm btn-outline" data-hide="${p.id}">Ocultar</button>
+          <button type="button" class="btn btn-sm btn-danger" data-delete="${p.id}">Eliminar</button>
         </td>
       </tr>`
       )
@@ -121,6 +122,9 @@
 
     tbody.querySelectorAll("[data-edit]").forEach((btn) => {
       btn.addEventListener("click", () => openProductModal(Number(btn.dataset.edit)));
+    });
+    tbody.querySelectorAll("[data-hide]").forEach((btn) => {
+      btn.addEventListener("click", () => hideProduct(Number(btn.dataset.hide)));
     });
     tbody.querySelectorAll("[data-delete]").forEach((btn) => {
       btn.addEventListener("click", () => deleteProduct(Number(btn.dataset.delete)));
@@ -283,12 +287,24 @@
     }
   }
 
-  async function deleteProduct(id) {
+  async function hideProduct(id) {
     const p = products.find((x) => productIdMatch(x.id, id));
     if (!confirm(`¿Ocultar "${p?.name}" de la tienda?`)) return;
     try {
       await api(`/api/admin/products/${id}`, { method: "DELETE" });
-      showToast("Producto desactivado");
+      showToast("Producto oculto");
+      await loadProducts();
+    } catch (err) {
+      showToast(err.message, "warning");
+    }
+  }
+
+  async function deleteProduct(id) {
+    const p = products.find((x) => productIdMatch(x.id, id));
+    if (!confirm(`¿Eliminar permanentemente "${p?.name}"? Esta acción no se puede deshacer.`)) return;
+    try {
+      await api(`/api/admin/products/${id}/permanent`, { method: "DELETE" });
+      showToast("Producto eliminado");
       await loadProducts();
     } catch (err) {
       showToast(err.message, "warning");
@@ -353,6 +369,32 @@
         }
       });
     });
+  }
+
+  async function importDiscordVouches(file) {
+    const btn = $("#importDiscordBtn");
+    btn.disabled = true;
+    btn.textContent = "Importando...";
+
+    try {
+      let data;
+      if (file) {
+        const formData = new FormData();
+        formData.append("vouchesFile", file);
+        data = await api("/api/admin/reviews/import-discord", { method: "POST", body: formData });
+      } else {
+        data = await api("/api/admin/reviews/import-discord", { method: "POST", body: JSON.stringify({}) });
+      }
+
+      showToast(`${data.imported} reseñas importadas (${data.skipped} ya existían)`);
+      loadReviews();
+    } catch (err) {
+      showToast(err.message, "warning");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Importar desde Discord";
+      if (file) $("#importDiscordFile").value = "";
+    }
   }
 
   async function loadReviews() {
@@ -440,6 +482,12 @@
     $("#productForm").addEventListener("submit", saveProduct);
     $("#productModal").addEventListener("click", (e) => {
       if (e.target === $("#productModal")) closeProductModal();
+    });
+
+    $("#importDiscordBtn").addEventListener("click", () => importDiscordVouches());
+    $("#importDiscordFile").addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (file) importDiscordVouches(file);
     });
 
     try {

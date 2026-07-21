@@ -108,7 +108,17 @@
 
       <!-- Reviews -->
       <section id="tab-reviews" class="admin-tab">
-        <h2 class="admin-title">Reseñas</h2>
+        <div class="admin-tab-header">
+          <h2 class="admin-title">Reseñas</h2>
+          <div class="admin-actions">
+            <button type="button" class="btn btn-primary" id="importDiscordBtn">Importar desde Discord</button>
+            <label class="btn btn-outline admin-file-btn">
+              Subir vouches.json
+              <input type="file" id="importDiscordFile" accept=".json,application/json" hidden>
+            </label>
+          </div>
+        </div>
+        <p class="admin-hint" id="importDiscordHint">Sincroniza los vouches del bot de Discord. Solo importa reseñas nuevas.</p>
         <div class="admin-table-wrap">
           <table class="admin-table" id="reviewsTable">
             <thead>

@@ -1,8 +1,8 @@
 const initSqlJs = require("sql.js");
 const path = require("path");
 const fs = require("fs");
+const { dbPath } = require("./paths");
 
-const dbPath = process.env.DATABASE_PATH || "./data/cludy.db";
 const dir = path.dirname(dbPath);
 
 let sqlDb = null;
@@ -11,7 +11,19 @@ let persistEnabled = false;
 function saveDb() {
   if (!persistEnabled || !sqlDb) return;
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(dbPath, Buffer.from(sqlDb.export()));
+  const data = Buffer.from(sqlDb.export());
+  const tmpPath = `${dbPath}.tmp`;
+  fs.writeFileSync(tmpPath, data);
+  try {
+    fs.renameSync(tmpPath, dbPath);
+  } catch {
+    fs.writeFileSync(dbPath, data);
+    try {
+      fs.unlinkSync(tmpPath);
+    } catch {
+      /* ignore */
+    }
+  }
 }
 
 function bindParams(stmt, params) {
@@ -66,6 +78,8 @@ async function initDb() {
   } else {
     sqlDb = new SQL.Database();
   }
+
+  persistEnabled = true;
 
   sqlDb.run("PRAGMA foreign_keys = ON");
 
@@ -135,25 +149,6 @@ async function initDb() {
     );
   `);
 
-  const count = db.prepare("SELECT COUNT(*) as c FROM products").get().c;
-  if (count === 0) {
-    const insert = db.prepare(`
-      INSERT INTO products (name, description, price, category, stock, show_stock, purchase_count, show_purchases, offer_active)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-    const samples = [
-      ["Pack Premium Digital", "Colección de archivos .txt y recursos digitales exclusivos. Entrega instantánea.", 19.99, "variety", 50, 1, 127, 1, 0],
-      ["Script Pro v2", "Script avanzado en formato .txt listo para usar. Compatible y documentado.", 14.99, "tools", -1, 0, 89, 1, 0],
-      ["Guía Completa Digital", "Manual digital descargable al instante en formato .txt/.pdf.", 9.99, "methods", 100, 1, 234, 1, 1],
-      ["Bundle Ultimate", "Todos los productos digitales en un solo pack con descuento incluido.", 49.99, "variety", 25, 1, 56, 1, 0],
-      ["Config Elite .txt", "Archivo de configuración optimizada premium. Descarga directa.", 7.99, "tools", -1, 0, 312, 1, 0],
-      ["Plantillas Pack", "Pack de plantillas editables en múltiples formatos digitales.", 12.99, "variety", 75, 1, 98, 1, 0],
-      ["Starter Digital Kit", "Kit inicial perfecto para empezar. Archivos listos para descargar.", 4.99, "variety", -1, 0, 501, 1, 0],
-    ];
-    for (const s of samples) insert.run(...s);
-    db.prepare("UPDATE products SET offer_price = 6.99, offer_label = '-30% OFERTA' WHERE name = 'Guía Completa Digital'").run();
-  }
-
   db.prepare("UPDATE products SET active = 0 WHERE category = 'techniques'").run();
 
   const legacyCategoryMap = {
@@ -169,6 +164,14 @@ async function initDb() {
     db.prepare("UPDATE products SET category = ? WHERE category = ?").run(to, from);
   }
 
+  const reviewColumns = db.prepare("PRAGMA table_info(reviews)").all().map((col) => col.name);
+  if (!reviewColumns.includes("source")) {
+    db.exec("ALTER TABLE reviews ADD COLUMN source TEXT");
+  }
+  if (!reviewColumns.includes("source_id")) {
+    db.exec("ALTER TABLE reviews ADD COLUMN source_id TEXT");
+  }
+
   const reviewCount = db.prepare("SELECT COUNT(*) as c FROM reviews").get().c;
   if (reviewCount === 0) {
     const insertReview = db.prepare(`
@@ -180,7 +183,6 @@ async function initDb() {
     insertReview.run("Diego R.", 4, "Buena calidad en los archivos. Litecoin funcionó sin problemas.", "Guía Completa PDF", "2026-07-05T09:15:00.000Z");
   }
 
-  persistEnabled = true;
   saveDb();
 }
 
@@ -191,4 +193,4 @@ function generateOrderCode() {
   return code;
 }
 
-module.exports = { db, initDb, generateOrderCode };
+module.exports = { db, initDb, generateOrderCode, saveDb, dbPath };
