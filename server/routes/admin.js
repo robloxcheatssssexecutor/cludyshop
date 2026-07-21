@@ -2,7 +2,6 @@ const express = require("express");
 const path = require("path");
 const fs = require("fs");
 const os = require("os");
-const archiver = require("archiver");
 const extract = require("extract-zip");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -133,7 +132,14 @@ router.get("/products", authMiddleware, (req, res) => {
   res.json(products);
 });
 
-router.get("/products/export", authMiddleware, (req, res) => {
+router.get("/products/export", authMiddleware, async (req, res) => {
+  let archiver;
+  try {
+    ({ default: archiver } = await import("archiver"));
+  } catch (err) {
+    return res.status(500).json({ error: err.message || "Error al cargar el exportador ZIP" });
+  }
+
   const payload = exportProducts(db);
   const stamp = new Date().toISOString().slice(0, 10);
   const folderName = `products-export-${stamp}`;
