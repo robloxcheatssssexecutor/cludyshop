@@ -206,6 +206,11 @@ async function initDb() {
     db.exec("ALTER TABLE reviews ADD COLUMN source_id TEXT");
   }
 
+  const orderColumns = db.prepare("PRAGMA table_info(orders)").all().map((col) => col.name);
+  if (!orderColumns.includes("customer_ip")) {
+    db.exec("ALTER TABLE orders ADD COLUMN customer_ip TEXT DEFAULT ''");
+  }
+
   ensureDefaultSettings(db);
 
   const reviewCount = db.prepare("SELECT COUNT(*) as c FROM reviews").get().c;

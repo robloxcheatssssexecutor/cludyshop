@@ -56,3 +56,7 @@ services:
         sync: false
       - key: DISCORD_URL
         value: https://discord.gg/WPrr4kFWyn
+      - key: DISCORD_WEBHOOK_PURCHASE
+        sync: false
+      - key: DISCORD_WEBHOOK_ORDER
+        sync: false

@@ -1841,6 +1841,9 @@ body {
 .admin-badge.red { background: rgba(255, 71, 87, 0.15); color: var(--danger); }
 
 .admin-muted { color: var(--gray-500); font-size: 0.85rem; }
+.admin-order-items { min-width: 160px; font-size: 0.85rem; line-height: 1.5; }
+.admin-order-items > div + div { margin-top: 8px; }
+.admin-ip { font-size: 0.8rem; color: var(--gray-400); word-break: break-all; }
 .admin-empty { text-align: center; color: var(--gray-500); padding: 40px !important; }
 .admin-review-msg { max-width: 280px; color: var(--gray-300); }
 

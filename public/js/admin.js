@@ -616,11 +616,21 @@
     paid: { label: "Paid", cls: "green" },
   };
 
+  function formatOrderItems(items) {
+    if (!items?.length) return '<span class="admin-muted">—</span>';
+    return items
+      .map(
+        (item) =>
+          `<div><strong>${escapeHtml(item.product_name)}</strong> × ${item.qty}<br><small class="admin-muted">${formatPrice(item.price * item.qty)}</small></div>`
+      )
+      .join("");
+  }
+
   async function loadOrders() {
     const orders = await api("/api/admin/orders");
     const tbody = $("#ordersBody");
     if (!orders.length) {
-      tbody.innerHTML = '<tr><td colspan="7" class="admin-empty">No orders</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9" class="admin-empty">No orders</td></tr>';
       return;
     }
 
@@ -631,7 +641,9 @@
       <tr>
         <td><code>${escapeHtml(o.order_code)}</code></td>
         <td>${escapeHtml(o.customer_name)}<br><small class="admin-muted">${escapeHtml(o.customer_email)}</small></td>
-        <td>${formatPrice(o.total)}</td>
+        <td class="admin-order-items">${formatOrderItems(o.items)}</td>
+        <td><strong>${formatPrice(o.total)}</strong></td>
+        <td><code class="admin-ip">${escapeHtml(o.customer_ip || "—")}</code></td>
         <td>${escapeHtml(o.payment_method)}</td>
         <td><span class="admin-badge ${st.cls}">${st.label}</span></td>
         <td><small>${new Date(o.created_at).toLocaleString("en-US")}</small></td>

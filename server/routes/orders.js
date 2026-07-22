@@ -6,6 +6,7 @@ const Stripe = require("stripe");
 const { db, generateOrderCode } = require("../db");
 const { uploadDir } = require("../paths");
 const { sendOrderConfirmation } = require("../services/email");
+const { notifyOrderCreated, notifyPurchaseCompleted } = require("../services/discord");
 const { deactivateExpiredOffers, getEffectivePrice } = require("../services/product-offers");
 
 const router = express.Router();
@@ -13,6 +14,12 @@ const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SEC
 
 function getBaseUrl(req) {
   return process.env.BASE_URL || `${req.protocol}://${req.get("host")}`;
+}
+
+function getClientIp(req) {
+  const forwarded = req.headers["x-forwarded-for"];
+  if (forwarded) return String(forwarded).split(",")[0].trim();
+  return req.ip || req.socket?.remoteAddress || "";
 }
 
 function createOrderItems(orderId, cartItems) {
@@ -55,6 +62,7 @@ async function markOrderPaid(orderId) {
   const baseUrl = process.env.BASE_URL || "http://localhost:3000";
   const downloadUrl = `${baseUrl}/api/orders/download/${updated.download_token}`;
   await sendOrderConfirmation(updated, itemsWithDelivery, downloadUrl);
+  await notifyPurchaseCompleted(updated, itemsWithDelivery);
   return updated;
 }
 
@@ -84,17 +92,22 @@ router.post("/create", async (req, res) => {
 
     const orderCode = generateOrderCode();
     const downloadToken = uuidv4();
+    const customerIp = getClientIp(req);
     const result = db
       .prepare(
-        `INSERT INTO orders (order_code, customer_name, customer_email, payment_method, total, download_token)
-         VALUES (?, ?, ?, ?, ?, ?)`
+        `INSERT INTO orders (order_code, customer_name, customer_email, payment_method, total, download_token, customer_ip)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`
       )
-      .run(orderCode, customerName.trim(), customerEmail.trim(), paymentMethod, total, downloadToken);
+      .run(orderCode, customerName.trim(), customerEmail.trim(), paymentMethod, total, downloadToken, customerIp);
 
     createOrderItems(result.lastInsertRowid, cartItems);
 
     const order = db.prepare("SELECT * FROM orders WHERE id = ?").get(result.lastInsertRowid);
     const baseUrl = getBaseUrl(req);
+
+    notifyOrderCreated(order, cartItems).catch((err) =>
+      console.error("Discord order notification error:", err.message)
+    );
 
     if (paymentMethod === "stripe") {
       if (!stripe) return res.status(500).json({ error: "Stripe no configurado" });

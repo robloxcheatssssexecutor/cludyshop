@@ -417,7 +417,13 @@ router.delete("/products/:id/permanent", authMiddleware, (req, res) => {
 
 router.get("/orders", authMiddleware, (req, res) => {
   const orders = db.prepare("SELECT * FROM orders ORDER BY created_at DESC LIMIT 100").all();
-  res.json(orders);
+  const getItems = db.prepare("SELECT product_name, price, qty FROM order_items WHERE order_id = ?");
+  res.json(
+    orders.map((order) => ({
+      ...order,
+      items: getItems.all(order.id),
+    }))
+  );
 });
 
 router.post("/orders/:id/approve", authMiddleware, async (req, res) => {
