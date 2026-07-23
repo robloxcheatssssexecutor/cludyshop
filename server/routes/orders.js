@@ -205,13 +205,31 @@ router.post("/:code/confirm-paypal", (req, res) => {
   const order = db.prepare("SELECT * FROM orders WHERE order_code = ?").get(req.params.code);
   if (!order) return res.status(404).json({ error: "Pedido no encontrado" });
   if (order.payment_method !== "paypal") return res.status(400).json({ error: "No es un pedido PayPal" });
+  if (order.payment_status === "paid") {
+    return res.json({
+      message: "Pago ya confirmado",
+      status: "paid",
+      trackUrl: `${getBaseUrl(req)}/track.html?code=${order.order_code}`,
+    });
+  }
+  if (order.payment_status === "pending_verification") {
+    return res.json({
+      message: "Pago ya registrado. Verificaremos en breve.",
+      status: "pending_verification",
+      trackUrl: `${getBaseUrl(req)}/track.html?code=${order.order_code}&waiting=1&method=paypal`,
+    });
+  }
 
   db.prepare("UPDATE orders SET paypal_note = ?, payment_status = 'pending_verification' WHERE id = ?").run(
     note?.trim() || `Pedido ${order.order_code}`,
     order.id
   );
 
-  res.json({ message: "Pago registrado. Verificaremos en breve.", status: "pending_verification" });
+  res.json({
+    message: "Pago registrado. Verificaremos en breve.",
+    status: "pending_verification",
+    trackUrl: `${getBaseUrl(req)}/track.html?code=${order.order_code}&waiting=1&method=paypal`,
+  });
 });
 
 router.get("/track/:code", (req, res) => {
@@ -258,6 +276,9 @@ router.get("/track/:code", (req, res) => {
     ltcTxHash: order.ltc_tx_hash,
     ltcWatchStarted: !!order.ltc_watch_started_at,
     paypalEmail: order.payment_method === "paypal" ? process.env.PAYPAL_EMAIL : null,
+    paypalNote: order.payment_method === "paypal"
+      ? order.paypal_note || `Pedido ${order.order_code} — NO marcar "bienes y servicios"`
+      : null,
   });
 });
 

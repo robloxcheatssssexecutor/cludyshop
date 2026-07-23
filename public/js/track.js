@@ -120,6 +120,63 @@
     });
   }
 
+  function renderPaypalWaiting(order) {
+    const paypalDiv = $("#resultPaypal");
+    paypalDiv.classList.remove("hidden");
+
+    if (order.paymentStatus === "paid") {
+      paypalDiv.classList.add("hidden");
+      return;
+    }
+
+    if (order.paymentStatus === "pending_verification") {
+      paypalDiv.innerHTML = `
+        <div class="ltc-waiting">
+          <div class="ltc-waiting-spinner" aria-hidden="true"></div>
+          <h3>Verificando pago PayPal</h3>
+          <p>Hemos recibido tu aviso. Revisaremos manualmente el pago de <strong>${formatPrice(order.total)}</strong> enviado a <strong>${order.paypalEmail || "nuestra cuenta PayPal"}</strong>.</p>
+          <p class="ltc-waiting-note">Te avisaremos por email cuando confirmemos el pago y tus archivos estén listos.</p>
+        </div>`;
+      return;
+    }
+
+    paypalDiv.innerHTML = `
+      <div class="ltc-pay-box">
+        <p><strong>Pago PayPal pendiente</strong></p>
+        <p>Envía <strong style="color:var(--blue-bright);">${formatPrice(order.total)}</strong> a <strong style="color:var(--blue-bright);">${order.paypalEmail || "nuestra cuenta PayPal"}</strong></p>
+        <p style="font-size:0.9rem;margin:8px 0;">Nota obligatoria: <strong>${order.paypalNote || `Pedido ${order.orderCode}`}</strong></p>
+        <p style="font-size:0.85rem;color:var(--danger);margin:8px 0;">Usa "Friends &amp; family" — NO marques bienes y servicios.</p>
+        <button class="btn btn-sm btn-primary" id="submitPaypalSent">Ya envié el pago</button>
+      </div>`;
+
+    paypalDiv.querySelector("#submitPaypalSent").addEventListener("click", async () => {
+      const btn = paypalDiv.querySelector("#submitPaypalSent");
+      btn.disabled = true;
+      btn.textContent = "Registrando...";
+      try {
+        const r = await fetch(`/api/orders/${order.orderCode}/confirm-paypal`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ note: order.paypalNote }),
+        });
+        const d = await r.json();
+        if (r.ok) {
+          showToast("Pago registrado. Lo verificaremos en breve.");
+          if (d.trackUrl) history.replaceState(null, "", d.trackUrl);
+          trackOrder(order.orderCode);
+        } else {
+          showToast(d.error || "Error", "warning");
+          btn.disabled = false;
+          btn.textContent = "Ya envié el pago";
+        }
+      } catch {
+        showToast("Error de conexión", "warning");
+        btn.disabled = false;
+        btn.textContent = "Ya envié el pago";
+      }
+    });
+  }
+
   async function trackOrder(code, silent = false) {
     const resultEl = $("#trackResult");
     const errorEl = $("#trackError");
@@ -158,8 +215,13 @@
 
       if (order.paymentMethod === "litecoin" && order.paymentStatus !== "paid") {
         renderLtcWaiting(order);
+        $("#resultPaypal").classList.add("hidden");
+      } else if (order.paymentMethod === "paypal" && order.paymentStatus !== "paid") {
+        renderPaypalWaiting(order);
+        $("#resultLtc").classList.add("hidden");
       } else {
         $("#resultLtc").classList.add("hidden");
+        $("#resultPaypal").classList.add("hidden");
         if (order.paymentStatus === "paid") stopPolling();
       }
 
@@ -196,7 +258,11 @@
     $("#trackCode").value = code;
     trackOrder(code.toUpperCase());
     if (params.get("paid") === "1") showToast("¡Pago completado! Tus archivos están listos.");
-    if (params.get("waiting") === "1") showToast("Buscando tu pago LTC en la blockchain...");
+    if (params.get("waiting") === "1") {
+      showToast(params.get("method") === "paypal"
+        ? "Pago PayPal registrado. Lo verificaremos en breve."
+        : "Buscando tu pago LTC en la blockchain...");
+    }
   }
 
   window.addEventListener("beforeunload", stopPolling);

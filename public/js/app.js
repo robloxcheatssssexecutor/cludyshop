@@ -384,6 +384,25 @@
     }
   }
 
+  async function confirmPaypal() {
+    const btn = $("#paypalConfirm");
+    btn.disabled = true;
+    btn.textContent = "Registering...";
+    try {
+      const note = $("#paypalNote").textContent?.trim();
+      const data = await api(`/api/orders/${lastOrderCode}/confirm-paypal`, {
+        method: "POST",
+        body: JSON.stringify({ note }),
+      });
+      closeModal("#paypalModal");
+      window.location.href = data.trackUrl || `/track.html?code=${lastOrderCode}&waiting=1&method=paypal`;
+    } catch (err) {
+      showToast(err.message, "warning");
+      btn.disabled = false;
+      btn.textContent = "I've sent the payment";
+    }
+  }
+
   async function handleReviewSubmit(e) {
     e.preventDefault();
     if (!selectedStars) return showToast("Select between 1 and 5 stars", "warning");
@@ -530,6 +549,7 @@
     $("#reviewForm").addEventListener("submit", handleReviewSubmit);
     $("#skipReview").addEventListener("click", () => closeModal("#reviewModal"));
     $("#ltcConfirm").addEventListener("click", confirmLtc);
+    $("#paypalConfirm").addEventListener("click", confirmPaypal);
     $("#ltcCopy").addEventListener("click", () => {
       navigator.clipboard.writeText($("#ltcAddress").value);
       showToast("Address copied");

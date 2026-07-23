@@ -218,19 +218,29 @@ async function initDb() {
   }
 
   ensureDefaultSettings(db);
-
-  const reviewCount = db.prepare("SELECT COUNT(*) as c FROM reviews").get().c;
-  if (reviewCount === 0) {
-    const insertReview = db.prepare(`
-      INSERT INTO reviews (customer_name, stars, message, product_name, created_at)
-      VALUES (?, ?, ?, ?, ?)
-    `);
-    insertReview.run("Carlos M.", 5, "Entrega instantánea del archivo digital. Todo perfecto, muy recomendado.", "Pack Premium Digital", "2026-07-15T10:00:00.000Z");
-    insertReview.run("Laura S.", 5, "Pago con Stripe y en segundos tenía mi descarga. Excelente tienda.", "Script Pro v2", "2026-07-10T14:30:00.000Z");
-    insertReview.run("Diego R.", 4, "Buena calidad en los archivos. Litecoin funcionó sin problemas.", "Guía Completa PDF", "2026-07-05T09:15:00.000Z");
-  }
+  purgeLegacySeedData(db);
 
   saveDb();
+}
+
+function purgeLegacySeedData(db) {
+  const alreadyPurged = db.prepare("SELECT value FROM settings WHERE key = 'legacy_seed_purged_v1'").get();
+  if (alreadyPurged) return;
+
+  db.prepare("DELETE FROM products WHERE created_at = '2026-07-20 23:09:03'").run();
+  db.prepare(`
+    DELETE FROM products
+    WHERE name LIKE 'Test Product%'
+       OR name LIKE 'TEST PERSIST%'
+       OR name LIKE 'PERSIST TEST%'
+  `).run();
+  db.prepare(`
+    DELETE FROM reviews
+    WHERE order_id IS NULL
+      AND customer_name IN ('Carlos M.', 'Laura S.', 'Diego R.')
+  `).run();
+
+  db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('legacy_seed_purged_v1', '1')").run();
 }
 
 function generateOrderCode() {
