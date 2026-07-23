@@ -61,7 +61,10 @@ app.use((req, res) => {
 initDb()
   .then(() => {
     const { dbPath } = require("./db");
+    const { markOrderPaid } = require("./routes/orders");
+    const { startLtcWatcher } = require("./services/ltc-watcher");
     console.log(`Database: ${dbPath}`);
+    startLtcWatcher(markOrderPaid);
     app.listen(PORT, HOST, () => {
       const base = process.env.BASE_URL || `http://localhost:${PORT}`;
       console.log(`Cludy Shop running on ${base}`);

@@ -350,11 +350,10 @@
     $("#ltcOrderCode").textContent = result.orderCode;
     $("#ltcAmount").textContent = result.ltcAmount;
     $("#ltcAddress").value = result.ltcWallet;
-    $("#ltcQr").src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(result.ltcWallet)}`;
+    $("#ltcQr").src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`litecoin:${result.ltcWallet}?amount=${result.ltcAmount}`)}`;
     $("#ltcTrackLink").href = result.trackUrl;
-    $("#ltcTxHash").value = "";
     openModal("#ltcModal");
-    showToast("Order created — send the LTC and confirm the hash");
+    showToast("Order created — send the exact LTC amount");
   }
 
   function showPaypalModal(result) {
@@ -368,18 +367,20 @@
   }
 
   async function confirmLtc() {
-    const txHash = $("#ltcTxHash").value.trim();
-    if (!txHash) return showToast("Enter the transaction hash", "warning");
+    const btn = $("#ltcConfirm");
+    btn.disabled = true;
+    btn.textContent = "Checking...";
     try {
-      await api(`/api/orders/${lastOrderCode}/confirm-ltc`, {
+      const data = await api(`/api/orders/${lastOrderCode}/confirm-ltc`, {
         method: "POST",
-        body: JSON.stringify({ txHash }),
+        body: JSON.stringify({}),
       });
       closeModal("#ltcModal");
-      showToast("Transaction registered. We'll notify you by email.");
-      promptReview();
+      window.location.href = data.trackUrl || `/track.html?code=${lastOrderCode}&waiting=1`;
     } catch (err) {
       showToast(err.message, "warning");
+      btn.disabled = false;
+      btn.textContent = "I've sent the payment";
     }
   }
 

@@ -8,6 +8,7 @@ const { uploadDir } = require("../paths");
 const { sendOrderConfirmation } = require("../services/email");
 const { notifyOrderCreated, notifyPurchaseCompleted } = require("../services/discord");
 const { deactivateExpiredOffers, getEffectivePrice } = require("../services/product-offers");
+const { calculateLtcAmount, checkOrderPayment } = require("../services/ltc-watcher");
 
 const router = express.Router();
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
@@ -140,12 +141,15 @@ router.post("/create", async (req, res) => {
     }
 
     if (paymentMethod === "litecoin") {
+      const ltcAmount = calculateLtcAmount(total, order.id);
+      db.prepare("UPDATE orders SET ltc_amount = ? WHERE id = ?").run(ltcAmount, order.id);
+
       return res.json({
         orderCode,
         paymentMethod: "litecoin",
         total,
         ltcWallet: process.env.LTC_WALLET_ADDRESS,
-        ltcAmount: (total / 80).toFixed(6),
+        ltcAmount: ltcAmount.toFixed(6),
         trackUrl: `${baseUrl}/track.html?code=${orderCode}`,
       });
     }
@@ -168,19 +172,32 @@ router.post("/create", async (req, res) => {
   }
 });
 
-router.post("/:code/confirm-ltc", (req, res) => {
-  const { txHash } = req.body;
+router.post("/:code/confirm-ltc", async (req, res) => {
   const order = db.prepare("SELECT * FROM orders WHERE order_code = ?").get(req.params.code);
   if (!order) return res.status(404).json({ error: "Pedido no encontrado" });
   if (order.payment_method !== "litecoin") return res.status(400).json({ error: "No es un pedido LTC" });
-  if (!txHash?.trim()) return res.status(400).json({ error: "Hash de transacción requerido" });
+  if (order.payment_status === "paid") {
+    return res.json({
+      message: "Pago ya confirmado",
+      status: "paid",
+      trackUrl: `${getBaseUrl(req)}/track.html?code=${order.order_code}`,
+    });
+  }
 
-  db.prepare("UPDATE orders SET ltc_tx_hash = ?, payment_status = 'pending_verification' WHERE id = ?").run(
-    txHash.trim(),
-    order.id
+  const now = new Date().toISOString();
+  db.prepare(
+    "UPDATE orders SET payment_status = 'pending_verification', ltc_watch_started_at = ? WHERE id = ?"
+  ).run(now, order.id);
+
+  checkOrderPayment(order.id, markOrderPaid).catch((err) =>
+    console.error("LTC immediate check error:", err.message)
   );
 
-  res.json({ message: "Transacción registrada. Verificaremos el pago en breve.", status: "pending_verification" });
+  res.json({
+    message: "Buscando tu pago en la blockchain. Te avisaremos cuando se confirme.",
+    status: "pending_verification",
+    trackUrl: `${getBaseUrl(req)}/track.html?code=${order.order_code}&waiting=1`,
+  });
 });
 
 router.post("/:code/confirm-paypal", (req, res) => {
@@ -237,7 +254,9 @@ router.get("/track/:code", (req, res) => {
     downloadAvailable: order.payment_status === "paid",
     downloadUrl: order.payment_status === "paid" ? `${baseUrl}/api/orders/download/${order.download_token}` : null,
     ltcWallet: order.payment_method === "litecoin" ? process.env.LTC_WALLET_ADDRESS : null,
+    ltcAmount: order.payment_method === "litecoin" ? order.ltc_amount : null,
     ltcTxHash: order.ltc_tx_hash,
+    ltcWatchStarted: !!order.ltc_watch_started_at,
     paypalEmail: order.payment_method === "paypal" ? process.env.PAYPAL_EMAIL : null,
   });
 });

@@ -42,6 +42,12 @@ services:
         sync: false
       - key: LTC_WALLET_ADDRESS
         sync: false
+      - key: LTC_EUR_RATE
+        value: "80"
+      - key: LTC_MIN_CONFIRMATIONS
+        value: "2"
+      - key: BLOCKCYPHER_TOKEN
+        sync: false
       - key: PAYPAL_EMAIL
         sync: false
       - key: SMTP_HOST

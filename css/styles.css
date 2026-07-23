@@ -1844,6 +1844,46 @@ body {
 .admin-order-items { min-width: 160px; font-size: 0.85rem; line-height: 1.5; }
 .admin-order-items > div + div { margin-top: 8px; }
 .admin-ip { font-size: 0.8rem; color: var(--gray-400); word-break: break-all; }
+
+.ltc-waiting {
+  text-align: center;
+  padding: 8px 0;
+}
+.ltc-waiting h3 {
+  margin: 16px 0 8px;
+  color: var(--white);
+  font-size: 1.1rem;
+}
+.ltc-waiting p {
+  color: var(--gray-400);
+  font-size: 0.9rem;
+  margin: 8px 0;
+  line-height: 1.5;
+}
+.ltc-waiting-tx code {
+  color: var(--blue-bright);
+  font-size: 0.85rem;
+}
+.ltc-waiting-note {
+  font-size: 0.8rem !important;
+  color: var(--gray-500) !important;
+  margin-top: 16px !important;
+}
+.ltc-waiting-spinner {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto;
+  border: 3px solid rgba(0, 82, 255, 0.2);
+  border-top-color: var(--blue-bright);
+  border-radius: 50%;
+  animation: ltc-spin 0.9s linear infinite;
+}
+.ltc-pay-box {
+  line-height: 1.6;
+}
+@keyframes ltc-spin {
+  to { transform: rotate(360deg); }
+}
 .admin-empty { text-align: center; color: var(--gray-500); padding: 40px !important; }
 .admin-review-msg { max-width: 280px; color: var(--gray-300); }
 

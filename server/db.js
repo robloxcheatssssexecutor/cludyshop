@@ -210,6 +210,12 @@ async function initDb() {
   if (!orderColumns.includes("customer_ip")) {
     db.exec("ALTER TABLE orders ADD COLUMN customer_ip TEXT DEFAULT ''");
   }
+  if (!orderColumns.includes("ltc_amount")) {
+    db.exec("ALTER TABLE orders ADD COLUMN ltc_amount REAL");
+  }
+  if (!orderColumns.includes("ltc_watch_started_at")) {
+    db.exec("ALTER TABLE orders ADD COLUMN ltc_watch_started_at TEXT");
+  }
 
   ensureDefaultSettings(db);
 
